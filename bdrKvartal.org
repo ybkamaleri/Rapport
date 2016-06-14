@@ -28,7 +28,7 @@
 
   #### Valg Sykehus ####
 
-  Sykehus = 18
+  Sykehus = 15
 
   #####################
 
@@ -174,7 +174,7 @@ Andelingen HbA1c mot landsgjennomsnittet
   hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
   hbaAlle$kjonn <- factor(hbaAlle$kjonn,
                           levels = c(1:3),
-                          labels = c("Gutt","Jente", "Total"))
+                          labels = c("Gutt","Jente", "Alle"))
 
   ## Ta bort Mean hvis n=1
   ## hbaAlle <- noMean(hbaAlle)
@@ -188,7 +188,7 @@ Andelingen HbA1c mot landsgjennomsnittet
   hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
   hbaLokal$kjonn <- factor(hbaLokal$kjonn,
                            levels = c(1:3),
-                           labels = c("Gutt","Jente", "Total"))
+                           labels = c("Gutt","Jente", "Alle"))
 
   ## Definere min og maks for yx-aksen og farge
   ymin <- ifelse(min(hbaAlle$Mean) < 5, min(hbaAlle$Mean) + 0.3, 5)
@@ -217,7 +217,7 @@ Andelingen HbA1c mot landsgjennomsnittet
   gg.tab1 <- ggplot(hbaLokal,
                     aes(x = AlderKat3, y = factor(kjonn), label = format(Mean, digits = 3), colour=factor(kjonn))) +
       geom_text(size = 3, colour="black") +
-      scale_y_discrete(limits=c("Total", "Jente", "Gutt")) +
+      scale_y_discrete(limits=c("Alle", "Jente", "Gutt")) +
       theme(panel.grid.major = element_blank(),
             legend.position = "none", #ta bort legend
             panel.border = element_blank(),
