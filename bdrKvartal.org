@@ -28,7 +28,7 @@
 
   #### Valg Sykehus ####
 
-  Sykehus = 1
+  Sykehus = 18
 
   #####################
 
@@ -181,8 +181,10 @@ Andelingen HbA1c mot landsgjennomsnittet
 
   ## Kjønn lokal 1:lokal 2:øvrige
   hbaLokalT <- sumCI(data=dplyr::filter(Data, sykValg==1), "hba", gpvars = "AlderKat3")
+  hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
   hbaLokal <- sumCI(data=dplyr::filter(Data, sykValg==1), "hba", gpvars = c("AlderKat3","kjonn"))
-  hbaLokal <- dplyr::full_join(hbaLokal, hbaLokalT)
+  hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
+  hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
   hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
   hbaLokal$kjonn <- factor(hbaLokal$kjonn,
                            levels = c(1:3),
