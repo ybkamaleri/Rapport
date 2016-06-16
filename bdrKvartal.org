@@ -28,7 +28,7 @@
 
   #### Valg Sykehus ####
 
-  Sykehus = 15
+  Sykehus = 18
 
   #####################
 
@@ -99,7 +99,8 @@
 Dato: \Sexpr{format(Sys.Date(), "%d %m %Y")}
 ** Antall førstegangsregistreringer
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
-\Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte årskontroller året før.
+\Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
+årskontroller i \Sexpr{year - 1}.
 
 #+CAPTION: Figure 1
 #+NAME: Plot1
@@ -152,6 +153,8 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
   print(xtable(tblFinal, digits=0),include.rownames=F)
 #+END_SRC
+
+#+RESULTS: Plot1
 
 ** Andelingen HbA1c mot landsgjennomsnittet
 
@@ -252,4 +255,62 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   mmplot(gg.Alle, gg.tab1)
 #+END_SRC
 
+#+LATEX: \pagebreak
+
 ** Avdelingens kompletthet av data
+
+#+NAME: Plot3
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+BEGIN_SRC R
+  ## white space og NA
+  trim <- function(x) {
+      x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+      x[x==""] <- NA
+      x <- ifelse(is.na(x), 0, 1)
+      return(x)
+  }
+
+  dataLokal$hba1c <- as.factor(trim(dataLokal$lab_HbA1cAkerVerdi))
+  dataLokal$insulinsjokk <- as.factor(trim(dataLokal$und_inssjokk))
+  dataLokal$ketoacidose <- as.factor(trim(dataLokal$und_ketoacidose))
+  dataLokal$Oye <- as.factor(trim(dataLokal$und_Oye))
+  dataLokal$infiltrater <- as.factor(trim(dataLokal$und_infiltrater))
+  dataLokal$hypo <- as.factor(trim(dataLokal$und_syk_hypo))
+  dataLokal$hype <- as.factor(trim(dataLokal$und_syk_hype))
+  dataLokal$innAkt <- as.factor(trim(dataLokal$Inn_Akt))
+  dataLokal$labLipLDL <- as.factor(trim(dataLokal$lab_lip_LDL))
+  dataLokal$labResProve <- as.factor(trim(dataLokal$lab_res_1prove))
+
+  komplett <- dplyr::select(dataLokal, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+
+  tblFun <- function(x){
+      tbl <- table(x)
+      res <- cbind(tbl,round(prop.table(tbl)*100,1))
+      colnames(res) <- c('Count','Percentage')
+      res
+  }
+
+  navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Oye", "infiltrater", "hypo", "hype", "innAkt",
+            "labLipLDL", "labResProve")
+  komp1 <- do.call(rbind, lapply(komplett, tblFun))
+  maxkomp <- dim(komp1)[1]
+  komp2 <- komp1[seq(0,maxkomp,2),]
+  komp2 <- data.frame(komp2, row.names=navn)
+  komp2 <- dplyr::add_rownames(komp2, "navn") #convert row.names
+  ## komp2$navn <- rownames(komp2) #create col with navn
+
+  ggplot(komp2, aes(x=navn,y = Percentage)) + geom_bar(stat="identity", fill =  "#003399") +
+      coord_flip() + xlab("") + ylab("Andel (%)") +
+      ylim(0,100) +
+      geom_text(aes(label = Percentage), hjust= -0.3, color="black") +
+      theme(
+          axis.text.y = element_text(size = 11, color = "black"),
+          plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+          panel.background = element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major.x = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.line.x = element_line(size = 0.5))
+#+END_SRC
