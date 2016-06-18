@@ -6,8 +6,8 @@
 #+LANGUAGE:  no
 #+OPTIONS:   H:3 num:nil toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:(not LOGBOOK) todo:t pri:nil tags:t
-#+MACRO: newline @@latex:\\@@ @@html:<br>@@
-#+MACRO: break @@latex:\linebreak@@ @@html:<br>@@
+#+MACRO: NEWLINE @@latex:\\@@ @@html:<br>@@
+#+MACRO: BREAK @@latex:\linebreak@@ @@html:<br>@@
 
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
@@ -22,25 +22,26 @@
 #+ATTR_RAVEL: echo=FALSE, results=FALSE, message=FALSE, warning=FALSE
 #+BEGIN_SRC R
   rm(list=ls())
+
+  ############### Kontroll #################
+
   setwd("~/OUS/BDR/Rapport/Data")
   ##install.packages("~/Git-work/Packages/nbReg_0.0.0.9000.tar.gz")
   Filnavn <- "20160630bdr2.sav"
 
-  #### Valg Sykehus ####
+  Sykehus = 1
 
-  Sykehus = 18
-
-  #####################
-
-  require("nbReg")
-  RegData <- suppressWarnings(nbFile(filnavn=Filnavn))
-  RegData2 <- foreign::read.spss(Filnavn, to.data.frame = TRUE, use.value.labels = FALSE) #not to convert to factor
-  Data <- nbClean(RegData)
-  sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
+  DatoFra = "2016-01-01" # YYYY-MM-DD
+  DatoTil = "2016-03-31" # YYYY-MM-DD
 
 
-  year <- as.numeric(format(Sys.Date(), "%Y"))
-  lastyr <- as.numeric(year - 1)
+  ##########################################
+
+  MinAlder = 0
+  MaxAlder = 99
+  DBType = 2  # 1:Type1 2:Alle
+  Kjonn  = 3  		# 1:gutt 2:jente 3:alle
+  DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
 
   ## hbA1c CI
   sumCI <- function(data, maalvar, gpvars, conf.Int=.95) {
@@ -80,56 +81,104 @@
           include.lowest = TRUE, right = FALSE, labels = labs)
   }
 
-  Data$AlderKat3 <- alder.kat2(Data$Alder, 0, 15, 5)
+
+  require("nbReg")
+  RegData <- suppressWarnings(nbReg::nbFile(filnavn=Filnavn))
+  ##RegData2 <- foreign::read.spss(Filnavn, to.data.frame = TRUE, use.value.labels = FALSE) #not to convert to factor
+  RegData <- nbReg::nbClean(data = RegData) #hele datasett
+
+  ## Kategorisert Alder til max 15+
+  RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
+
+  ##lokal og andre
+  RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
+
+  RegDataLokal <- filter(RegData, sykValg == 1) #lokal sykehus
+  RegDataNorge <- filter(RegData, sykValg == 2) #øvrige sykehusene
+
+  ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
+  rappData <- nbReg::nbText(data = RegDataLokal)
+  Data <- rappData$data
+
+  ########### utvalgt norge data innen spesifiserte tidsrommet
+  norData <- nbReg::nbText(data = RegData)
+  dataNorge <- norData$data
+
+  #############################
+  sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
+  tidRom <- rappData$figTxt[[4]]
+
+  year <- as.integer(format(as.Date(DatoTil), "%Y"))
+  lastyr <- as.numeric(year - 1)
 
   ## Libraries
   library(dplyr)
   library(ggplot2)
   library(knitr)
-
-  ##lokal og andre
-  Data$sykValg <- ifelse(Data$SykehusKode == Sykehus, 1, 2)
-
-  dataLokal <- filter(Data, sykValg == 1) #lokal sykehus
-  dataNorge <- filter(Data, sykValg == 2) #øvrige sykehusene
+  library(grid)
+  library(tidyr)
+  library(xtable)
 #+END_SRC
 
-* Kvartalsrapport for \Sexpr{sykNavn}
+#+LATEX: \noindent\hfill Dato: \Sexpr{format(Sys.Date(), "%d.%m.%Y")}
 
-Dato: \Sexpr{format(Sys.Date(), "%d.%m.%Y")}
+#+BEGIN_CENTER
+#+LATEX: {\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
+\Sexpr{tidRom}
+#+END_CENTER
+
+
 ** Antall førstegangsregistreringer
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
-årskontroller i \Sexpr{year - 1}.
+årskontroller i \Sexpr{lastyr}.
 
 #+CAPTION: Figure 1
 #+NAME: Plot1
-#+ATTR_RAVEL: echo=FALSE, results="asis",
+#+ATTR_RAVEL: echo=FALSE, results="asis", message=FALSE, warning=FALSE
 #+BEGIN_SRC R
-  sykYear <- dataLokal %>%
+  sykYear <- Data %>%
       select(Year, inn_Type, AlderKat3) %>%
       filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
       group_by(inn_Type, Year, AlderKat3) %>%
       summarise(
           count = n())
 
+  ## Total for Årskontroll og Førstegang
   sykYear01 <- sykYear %>%
       group_by(inn_Type, Year) %>%
       mutate(Totalt2 = sum(count),
       dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
 
   library(tidyr)
-  sykYearLong <- spread(sykYear01, key=AlderKat3, value = count)
-
-  tblBasis <- sykYearLong[order(sykYearLong$dumm),]
+  sykYearLong <- as.data.frame(spread(sykYear01, key=AlderKat3, value = count))
+  tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder Førstegang er på toppen
+  tblYearAndel <- tblYear[2,]
 
   ## Antall tabell
-  tbl01 <- filter(tblBasis, Year==2016)
+  tbl01 <- filter(tblYear, Year==year)
   buang <- c("Year", "dumm")
   tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
 
-  ## Estimerte andel tabell
-  tbl02 <- tblBasis[c(3:4),]
+  ## Estimerte andel motatte årskontroller tabell
+
+  ## for alderkat lastyear
+  sykYearLyr <- RegData %>%
+      select(Year, inn_Type, AlderKat3) %>%
+      filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
+      group_by(inn_Type, Year, AlderKat3) %>%
+      summarise(
+          count = n())
+
+  ## for Total lastyear
+  sykYear101 <- sykYearLyr %>%
+      group_by(inn_Type, Year) %>%
+      mutate(Totalt2 = sum(count))
+
+  sykYearLongLyr <- as.data.frame(tidyr::spread(sykYear101, key=AlderKat3, value = count))
+  sykYearLongLyr1 <- dplyr::filter(sykYearLongLyr, Year == lastyr)
+
+  tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
   tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
   tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
   tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
@@ -145,11 +194,6 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
   tblFinal <- as.data.frame(tblFinal)
   tblFinal[is.na(tblFinal)] <- 0
-
-  library(xtable)
-  ## tblF <- xtable(tblFinal)
-  ##digits(tblF) <- c(0,0,0,0,0,0,0)
-  ## print(tblF, include.rownames=FALSE)
 
   print(xtable(tblFinal, digits=0),include.rownames=F)
 #+END_SRC
@@ -169,9 +213,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## }
 
   ## Bruk nbReg pakke
-  ## Total
-  hbaAlleT <- sumCI(data = Data, maalvar = "hba", gpvars = "AlderKat3")
-  hbaAlle <- sumCI(data = Data, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  ## Total hele landet
+  hbaAlleT <- sumCI(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
+  hbaAlle <- sumCI(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
   hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
   hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
   hbaAlle$kjonn <- factor(hbaAlle$kjonn,
@@ -182,9 +226,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## hbaAlle <- noMean(hbaAlle)
 
   ## Kjønn lokal 1:lokal 2:øvrige
-  hbaLokalT <- sumCI(data=dplyr::filter(Data, sykValg==1), "hba", gpvars = "AlderKat3")
+  hbaLokalT <- sumCI(data = Data, maalvar = "hba", gpvars = "AlderKat3")
   hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
-  hbaLokal <- sumCI(data=dplyr::filter(Data, sykValg==1), "hba", gpvars = c("AlderKat3","kjonn"))
+  hbaLokal <- sumCI(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
   hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
   hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
   hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
@@ -224,9 +268,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       guides(fill = guide_legend(override.aes = list(shape = NA))) +
       ylab("HbA1c") +  xlab(NULL) +
       annotate("point", x = 0.7, y = ymax - 0.1, shape = 18, size = 5, color = "#CC3300") +
-      annotate("text", x = 1.3, y = ymax - 0.1, label = "= Landsgjennomsnittet") +
-      theme(legend.key = element_rect(color = "black"))
-
+      annotate("text", x = 1.3, y = ymax - 0.1, label = "= Landsgjennomsnittet")
 
 
   gg.tab1 <- ggplot(hbaLokal,
@@ -264,36 +306,38 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+LATEX: \pagebreak
 
 ** Avdelingens kompletthet av data
+NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket nesten som
+de er fra databasen {{{BREAK}}}
 
 #+NAME: Plot3
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
   ## white space og NA
-  trim <- function(x) {
+  trimNJ <- function(x) {
       x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
       x[x==""] <- NA
       x <- ifelse(is.na(x), 0, 1)
       return(x)
   }
 
-  dataLokal$hba1c <- as.factor(trim(dataLokal$lab_HbA1cAkerVerdi))
-  dataLokal$insulinsjokk <- as.factor(trim(dataLokal$und_inssjokk))
-  dataLokal$ketoacidose <- as.factor(trim(dataLokal$und_ketoacidose))
-  dataLokal$Oye <- as.factor(trim(dataLokal$und_Oye))
-  dataLokal$infiltrater <- as.factor(trim(dataLokal$und_infiltrater))
-  dataLokal$hypo <- as.factor(trim(dataLokal$und_syk_hypo))
-  dataLokal$hype <- as.factor(trim(dataLokal$und_syk_hype))
-  dataLokal$innAkt <- as.factor(trim(dataLokal$Inn_Akt))
-  dataLokal$labLipLDL <- as.factor(trim(dataLokal$lab_lip_LDL))
-  dataLokal$labResProve <- as.factor(trim(dataLokal$lab_res_1prove))
+  Data$hba1c <- as.factor(trimNJ(Data$lab_HbA1cAkerVerdi))
+  Data$insulinsjokk <- as.factor(trimNJ(Data$und_inssjokk))
+  Data$ketoacidose <- as.factor(trimNJ(Data$und_ketoacidose))
+  Data$Oye <- as.factor(trimNJ(Data$und_Oye))
+  Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
+  Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
+  Data$hype <- as.factor(trimNJ(Data$und_syk_hype))
+  Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
+  Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
+  Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-  komplett <- dplyr::select(dataLokal, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
   N <- dim(komplett)[1]
 
   tblFun <- function(x){
       tbl <- table(x)
       res <- cbind(tbl,round(prop.table(tbl)*100,1))
-      colnames(res) <- c('Count','Percentage')
+      colnames(res) <- c('Antall','Andel')
       res
   }
 
@@ -306,10 +350,10 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   komp2 <- dplyr::add_rownames(komp2, "navn") #convert row.names
   ## komp2$navn <- rownames(komp2) #create col with navn
 
-  ggplot(komp2, aes(x=navn,y = Percentage)) + geom_bar(stat="identity", fill =  "#0066CC") +
+  ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
       ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
-      geom_text(aes(label = Percentage), hjust= -0.1, color="black") +
+      geom_text(aes(label = Andel), hjust= -0.1, color="black") +
       theme(
           axis.text.y = element_text(size = 10, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
@@ -320,4 +364,82 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
           panel.grid.major.x = element_blank(),
           axis.ticks.y = element_blank(),
           axis.line.x = element_line(size = 0.5))
+#+END_SRC
+
+** Avdelingens akutte kompliksjoner
+
+Jeg trenger litt tid å studere gjennom datasettet for å finne ut hvordan det er best
+mulig å presentere figuren \linebreak
+#+NAME: Plot4
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+BEGIN_SRC R
+
+#+END_SRC
+
+** Behandling ved avdelingen
+
+#+NAME: Plot5
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+BEGIN_SRC R
+  trimJa <- function(x) {
+      x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+      x <- ifelse(x!="Ja", 0, 1)
+      return(x)
+  }
+
+  behNavn <- c("Penn", "Pumpe", "CGM")
+
+  ## Lokal
+  behData <- dplyr::select(Data, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+  behLokal <- as.data.frame(lapply(behData[,], trimJa))
+
+  behLokalp <- do.call(rbind, lapply(behLokal, tblFun))
+  maxBehL <- dim(behLokalp)[1]
+  behLokalp <- behLokalp[seq(0,maxBehL,2),]
+  behLokalp <- data.frame(behLokalp, row.names=behNavn)
+  behLokalp <- dplyr::add_rownames(behLokalp, "navn") #convert row.names
+  behLokalp <- dplyr::mutate(behLokalp, sykValg = 1) #lokal
+
+
+  ## Norge
+  behNorge <- dplyr::select(dataNorge, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+  behAlle <- as.data.frame(lapply(behNorge[,], trimJa))
+
+  behAllep <- do.call(rbind, lapply(behAlle, tblFun))
+  maxBehA <- dim(behAllep)[1]
+  behAllep <- behAllep[seq(0,maxBehA,2),]
+  behAllep <- data.frame(behAllep, row.names=behNavn)
+  behAllep <- dplyr::add_rownames(behAllep, "navn") #convert row.names
+  behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
+
+  ## Figur
+  cols <- c("BAR" = "#0066CC", "PT" = "#CC3300")
+  ggplot(NULL, aes(x = navn, y = Andel)) +
+      geom_bar(data = behLokalp, stat = "identity", fill = "#0066CC") +
+      geom_point(data = behAllep, aes(colour = "PT"), stat = "identity", shape = 18, size = 5) +
+      coord_flip() +
+      labs(x = "", y = "Andel (%)") +
+      theme_bw() +
+      scale_colour_discrete(labels = "Landsgjennomsnittet") +
+      theme(
+          legend.position = "top",
+          legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          legend.key = element_rect(color = "white"),
+          axis.text.y = element_text(size = 12, color = "black"),
+          plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+          panel.background = element_blank(),
+          panel.border = element_blank(),
+          panel.grid.major.y = element_blank(),
+          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          axis.ticks.y = element_blank(),
+          axis.line.x = element_line(size = 0.5))
+
+
+
+
+
+
+
+
 #+END_SRC
