@@ -96,7 +96,7 @@
 
 * Kvartalsrapport for \Sexpr{sykNavn}
 
-Dato: \Sexpr{format(Sys.Date(), "%d %m %Y")}
+Dato: \Sexpr{format(Sys.Date(), "%d.%m.%Y")}
 ** Antall førstegangsregistreringer
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
@@ -201,16 +201,21 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   gg.lokal <- gg +
       geom_bar(data = hbaLokal, position = position_dodge(.9), stat = "identity") +
       coord_cartesian(ylim = c(ymin,ymax)) +
-      scale_fill_manual(values = c( "#99CCFF", "#6699CC", "#003399")) + #hente farger
+      scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366")) + #hente farger
+      ##scale_fill_brewer() +
       theme(legend.position = 'top',
             legend.title = element_blank(),
-            axis.text = element_text(size = 10),
             legend.text = element_text(size = 10),
             panel.border = element_blank(),
-            panel.grid.major.y = element_line(colour = "black"),
+            panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
             panel.grid.minor.y = element_blank(),
             panel.grid.major.x = element_blank(),
-            axis.ticks = element_blank())
+            axis.text = element_text(size = 10),
+            axis.text.y = element_text(vjust = 0),
+            axis.line.x = element_line(size = 0.5),
+            ##axis.ticks.length = unit(0),
+            axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+            axis.ticks.x = element_blank())
 
 
   gg.Alle <- gg.lokal +
@@ -219,7 +224,8 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       guides(fill = guide_legend(override.aes = list(shape = NA))) +
       ylab("HbA1c") +  xlab(NULL) +
       annotate("point", x = 0.7, y = ymax - 0.1, shape = 18, size = 5, color = "#CC3300") +
-      annotate("text", x = 1.3, y = ymax - 0.1, label = "= Landsgjennomsnittet")
+      annotate("text", x = 1.3, y = ymax - 0.1, label = "= Landsgjennomsnittet") +
+      theme(legend.key = element_rect(color = "black"))
 
 
 
@@ -282,6 +288,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   dataLokal$labResProve <- as.factor(trim(dataLokal$lab_res_1prove))
 
   komplett <- dplyr::select(dataLokal, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+  N <- dim(komplett)[1]
 
   tblFun <- function(x){
       tbl <- table(x)
@@ -290,7 +297,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       res
   }
 
-  navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Oye", "infiltrater", "hypo", "hype", "innAkt",
+  navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Øye", "infiltrater", "hypo", "hype", "innAkt",
             "labLipLDL", "labResProve")
   komp1 <- do.call(rbind, lapply(komplett, tblFun))
   maxkomp <- dim(komp1)[1]
@@ -299,12 +306,12 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   komp2 <- dplyr::add_rownames(komp2, "navn") #convert row.names
   ## komp2$navn <- rownames(komp2) #create col with navn
 
-  ggplot(komp2, aes(x=navn,y = Percentage)) + geom_bar(stat="identity", fill =  "#003399") +
-      coord_flip() + xlab("") + ylab("Andel (%)") +
-      ylim(0,100) +
-      geom_text(aes(label = Percentage), hjust= -0.3, color="black") +
+  ggplot(komp2, aes(x=navn,y = Percentage)) + geom_bar(stat="identity", fill =  "#0066CC") +
+      coord_flip() +
+      ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
+      geom_text(aes(label = Percentage), hjust= -0.1, color="black") +
       theme(
-          axis.text.y = element_text(size = 11, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
           panel.background = element_blank(),
           panel.border = element_blank(),
