@@ -44,7 +44,7 @@
   DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
 
   ## hbA1c CI
-  sumCI <- function(data, maalvar, gpvars, conf.Int=.95) {
+  sumCIrapp <- function(data, maalvar, gpvars, conf.Int=.95) {
 
       summ = data %>%
           filter_(.dots = lazyeval::interp(~!is.na(var), var = as.name(maalvar))) %>%
@@ -214,8 +214,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
   ## Bruk nbReg pakke
   ## Total hele landet
-  hbaAlleT <- sumCI(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
-  hbaAlle <- sumCI(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
+  hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
+  hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
   hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
   hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
   hbaAlle$kjonn <- factor(hbaAlle$kjonn,
@@ -226,9 +227,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## hbaAlle <- noMean(hbaAlle)
 
   ## Kjønn lokal 1:lokal 2:øvrige
-  hbaLokalT <- sumCI(data = Data, maalvar = "hba", gpvars = "AlderKat3")
+  hbaLokalT <- sumCIrapp(data = Data, maalvar = "hba", gpvars = "AlderKat3")
   hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
-  hbaLokal <- sumCI(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
+  hbaLokal <- sumCIrapp(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
   hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
   hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
   hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
