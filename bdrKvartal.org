@@ -27,6 +27,7 @@
 #+BEGIN_SRC R
 
   ## Upload libraries
+  library(nbReg)
   library(dplyr)
   library(ggplot2)
   library(knitr)
@@ -96,7 +97,6 @@
   }
 
 
-  require("nbReg")
   RegData <- suppressWarnings(nbReg::nbFile(filnavn=Filnavn))
   ##RegData2 <- foreign::read.spss(Filnavn, to.data.frame = TRUE, use.value.labels = FALSE) #not to convert to factor
   RegData <- nbReg::nbClean(data = RegData) #hele datasett
@@ -108,7 +108,7 @@
   RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
 
   RegDataLokal <- dplyr::filter(RegData, sykValg == 1) #lokal sykehus
-  RegDataNorge <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
+  RegDataAndre <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
 
   ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
   rappData <- nbReg::nbText(data = RegDataLokal)
@@ -135,7 +135,7 @@
 #+END_CENTER
 
 
-** Antall førstegangsregistreringer
+** Antall førstegangsregistreringer og årskontroll
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i \Sexpr{lastyr}.
@@ -144,6 +144,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+NAME: Plot1
 #+ATTR_RAVEL: echo=FALSE, results="asis", message=FALSE, warning=FALSE
 #+BEGIN_SRC R
+  ## Lokal sykehus data eksludert poliklinisk
   sykYear <- Data %>%
       select(Year, inn_Type, AlderKat3) %>%
       filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
@@ -157,19 +158,18 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       mutate(Totalt2 = sum(count),
       dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
 
-  library(tidyr)
-  sykYearLong <- as.data.frame(spread(sykYear01, key=AlderKat3, value = count))
-  tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder Førstegang er på toppen
+  sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
+  tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
   tblYearAndel <- tblYear[2,]
 
-  ## Antall tabell
+  ## Tabell for antall
   tbl01 <- filter(tblYear, Year==year)
   buang <- c("Year", "dumm")
   tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
 
   ## Estimerte andel motatte årskontroller tabell
 
-  ## for alderkat lastyear
+  ## for alderkat året og fjoråret - bruk hele datasettet
   sykYearLyr <- RegData %>%
       select(Year, inn_Type, AlderKat3) %>%
       filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
@@ -360,10 +360,10 @@ de er fra databasen {{{BREAK}}}
 
   ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
-      ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
+      ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
       geom_text(aes(label = Andel), hjust= -0.1, color="black") +
       theme(
-          axis.text.y = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 8, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
           panel.background = element_blank(),
           panel.border = element_blank(),
@@ -384,7 +384,10 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
   dka <- Data[Data$lab_BiKarbonat < 15.00 | Data$lab_pH < 7.30,]
-  dkaSum <- length(dka)
+
+  dka1 <- dka %>%
+      filter(grepl("Førstegangsregistrering", inn_Type))
+  dkaSum <- dim(dka1)[1]
   keto <- ifelse(is.na(Data$und_ketoacidose_ant), 0, Data$und_ketoacidose_ant)
   ketoSum <- sum(keto)
   innssj <- ifelse(is.na(Data$und_inssjokk_ant), 0, Data$und_inssjokk_ant)
@@ -401,7 +404,7 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
       geom_text(aes(label = komData), hjust= -0.1, color="black") +
       theme(
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-          axis.text.y = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 8, color = "black"),
           axis.ticks.y = element_blank(),
           axis.line.x = element_line(size = 0.5),
           panel.background = element_blank(),
@@ -462,9 +465,9 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
       theme(
           legend.position = "top",
           legend.title = element_blank(),
-          legend.text = element_text(size = 12),
+          legend.text = element_text(size = 10),
           legend.key = element_rect(color = "white"),
-          axis.text.y = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(color = "black"),
           plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
           panel.background = element_blank(),
           panel.border = element_blank(),
