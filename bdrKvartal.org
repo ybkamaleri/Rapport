@@ -25,6 +25,22 @@
 #+CAPTION: Setup
 #+ATTR_RAVEL: echo=FALSE, results=FALSE, message=FALSE, warning=FALSE
 #+BEGIN_SRC R
+  ## Empty REM
+  rm(list=ls())
+
+  ############################
+  ### Sjekk/installere pakker
+  ############################
+
+  inspak <- function(pkg){
+      nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+      if (length(nypkg))
+          install.packages(nypkg, dependencies = TRUE)
+
+  }
+
+  pakke <- c("nbReg", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+  inspak(pakke)
 
   ## Upload libraries
   library(nbReg)
@@ -34,9 +50,6 @@
   library(grid)
   library(tidyr)
   library(xtable)
-
-  ## Empty all
-  rm(list=ls())
 
   ############### Kontroll #################
 
@@ -318,7 +331,7 @@ NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket neste
 de er fra databasen {{{BREAK}}}
 
 #+NAME: Plot3
-#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.5, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
   ## white space og NA
   trimNJ <- function(x) {
@@ -361,17 +374,20 @@ de er fra databasen {{{BREAK}}}
   ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
       ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
-      geom_text(aes(label = Andel), hjust= -0.1, color="black") +
+      geom_text(aes(label = Andel), hjust= -0.1, color="black", size = 3) +
       theme(
-          axis.text.y = element_text(size = 8, color = "black"),
+          axis.text.y = element_text(size = 9, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+          plot.title = element_text(size = 11),
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.y = element_blank(),
           panel.grid.major.x = element_blank(),
           axis.ticks.y = element_blank(),
-          axis.line.x = element_line(size = 0.5))
+          axis.line.x = element_line(size = 0.5),
+          axis.title.y = element_text(size = 9),
+          axis.title.x = element_text(size = 9))
 #+END_SRC
 
 ** Avdelingens akutte kompliksjoner
@@ -401,16 +417,18 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
       geom_bar(stat = "identity", fill = "#0066CC") +
       coord_flip() +
       labs(y = "Antall", x = "") +
-      geom_text(aes(label = komData), hjust= -0.1, color="black") +
+      geom_text(aes(label = komData), hjust= -0.1, color="black", size = 3) +
       theme(
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-          axis.text.y = element_text(size = 8, color = "black"),
+          axis.text.y = element_text(size = 9, color = "black"),
           axis.ticks.y = element_blank(),
           axis.line.x = element_line(size = 0.5),
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.minor.y = element_blank(),
-          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2))
+          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          axis.title.y = element_text(size = 9),
+          axis.title.x = element_text(size = 9))
 
   gg.kompT <- ggplot_gtable(ggplot_build(gg.komp))
   gg.kompT$layout$clip[gg.kompT$layout$name == "panel"] <- "off"
@@ -467,13 +485,14 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
           legend.title = element_blank(),
           legend.text = element_text(size = 10),
           legend.key = element_rect(color = "white"),
-          axis.text.y = element_text(color = "black"),
-          plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+          axis.text.y = element_text(color = "black", size = 9),
+          plot.margin = unit(c(0,0.5,0,0), "cm"),
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.y = element_blank(),
           panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
           axis.ticks.y = element_blank(),
-          axis.line.x = element_line(size = 0.5))
-
+          axis.line.x = element_line(size = 0.5),
+          axis.title.y = element_text(size = 9),
+          axis.title.x = element_text(size = 9))
 #+END_SRC
