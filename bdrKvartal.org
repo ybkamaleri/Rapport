@@ -257,14 +257,14 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
                            levels = c(1:3),
                            labels = c("Gutt","Jente", "Alle"))
 
-  ## Definere min og maks for yx-aksen og farge
+  ## Definere min og maks for y-aksen og farge
   ymin <- ifelse(min(hbaAlle$Mean) < 5, min(hbaAlle$Mean), 5)
   ymax <- max(hbaAlle$Mean) + 0.3
 
   library("ggplot2")
-  gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean, fill = kjonn)) + theme_bw()
+  gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean)) + theme_bw()
   gg.lokal <- gg +
-      geom_bar(data = hbaLokal, position = position_dodge(.9), stat = "identity") +
+      geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
       coord_cartesian(ylim = c(ymin,ymax)) +
       scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366")) + #hente farger
       ##scale_fill_brewer() +
@@ -284,13 +284,40 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
 
   gg.Alle <- gg.lokal +
-      geom_point(data = hbaAlle, stat = 'identity', size = 5, shape = 18,
+      geom_point(data = hbaAlle, aes(fill=kjonn), stat = 'identity', size = 5, shape = 18,
                  position = position_dodge(.9), color = "#CC3300") +
       guides(fill = guide_legend(override.aes = list(shape = NA))) +
       ylab("HbA1c") +  xlab(NULL) +
-      annotate("point", x = 0.7, y = ymax - 0.1, shape = 18, size = 5, color = "#CC3300") +
-      annotate("text", x = 1.3, y = ymax - 0.1, label = "= Landsgjennomsnittet")
+      annotate("point", x = 2, y = ymax + 0.2, shape = 18, size = 5, color = "#CC3300") +
+      annotate("text", x = 2.6, y = ymax + 0.2, label = "= Landsgjennomsnittet")
 
+  ##--- testing---
+  gg.testlokal <- gg +
+      geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
+      coord_cartesian(ylim = c(ymin,ymax)) +
+      scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366")) + #hente farger
+      ##scale_fill_brewer() +
+      theme(legend.position = 'top',
+            legend.title = element_blank(),
+            legend.text = element_text(size = 10),
+            panel.border = element_blank(),
+            panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
+            panel.grid.minor.y = element_blank(),
+            panel.grid.major.x = element_blank(),
+            axis.text = element_text(size = 10),
+            axis.text.y = element_text(vjust = 0),
+            axis.line.x = element_line(size = 0.5),
+            ##axis.ticks.length = unit(0),
+            axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+            axis.ticks.x = element_blank())
+
+  gg.testAlle <- gg.testlokal +
+      stat_identity(data = hbaAlle, aes(color=kjonn), geom = "point", position = position_dodge(.9))
+  gg.testAlle2 <- gg.testlokal +
+      geom_point(data = hbaAlle, aes(fill = kjonn), position = position_dodge(.9))
+
+
+  ##-------------------
 
   gg.tab1 <- ggplot(hbaLokal,
                     aes(x = AlderKat3, y = factor(kjonn), label = format(Mean, digits = 3), colour=factor(kjonn))) +
