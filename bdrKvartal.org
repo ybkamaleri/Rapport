@@ -307,6 +307,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ##         legend.position = "top", legend.box = "horizontal"))
 
 
+ cols <- c("#99CCFF", "#0066CC", "#003366")
   gg.Alle <- gg +
        geom_bar(data = hbaLokal, aes(fill = kjonn),
                 position_dodge(0.9), stat = "identity") +
