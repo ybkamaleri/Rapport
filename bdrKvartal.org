@@ -39,12 +39,13 @@
 
   }
 
-  pakke <- c("nbReg", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+  pakke <- c("nbReg", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable", "tibble")
   inspak(pakke)
 
   ## Upload libraries
   library(nbReg)
   library(dplyr)
+  library(tibble)
   library(ggplot2)
   library(knitr)
   library(grid)
@@ -452,7 +453,7 @@ de er fra databasen {{{BREAK}}}
   maxkomp <- dim(komp1)[1]
   komp2 <- komp1[seq(0,maxkomp,2),]
   komp2 <- data.frame(komp2, row.names=navn)
-  komp2 <- dplyr::add_rownames(komp2, "navn") #convert row.names
+  komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
   ## komp2$navn <- rownames(komp2) #create col with navn
 
   ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
@@ -540,7 +541,7 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
   maxBehL <- dim(behLokalp)[1]
   behLokalp <- behLokalp[seq(0,maxBehL,2),]
   behLokalp <- data.frame(behLokalp, row.names=behNavn)
-  behLokalp <- dplyr::add_rownames(behLokalp, "navn") #convert row.names
+  behLokalp <- tibble::rownames_to_column(behLokalp, "navn") #convert row.names
   behLokalp <- dplyr::mutate(behLokalp, sykValg = 1) #lokal
 
 
@@ -552,7 +553,7 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
   maxBehA <- dim(behAllep)[1]
   behAllep <- behAllep[seq(0,maxBehA,2),]
   behAllep <- data.frame(behAllep, row.names=behNavn)
-  behAllep <- dplyr::add_rownames(behAllep, "navn") #convert row.names
+  behAllep <- tibble::rownames_to_column(behAllep, "navn") #convert row.names
   behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
 
   ## Figur
