@@ -1,7 +1,7 @@
 #----
 *.pdf
 *.Rmd
-*.Rnw
 *.log
 *.out
 *.aux
+*.html
