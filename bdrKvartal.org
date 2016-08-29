@@ -456,10 +456,12 @@ de er fra databasen {{{BREAK}}}
   komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
   ## komp2$navn <- rownames(komp2) #create col with navn
 
-  ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
+  ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
-      ylim(0,100) + labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
-      geom_text(aes(label = Andel), hjust= -0.1, color="black", size = 3) +
+      #ylim(0,100) +
+      labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
+      geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
+      scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
       theme(
           axis.text.y = element_text(size = 9, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
@@ -473,6 +475,10 @@ de er fra databasen {{{BREAK}}}
           axis.line.x = element_line(size = 0.5),
           axis.title.y = element_text(size = 9),
           axis.title.x = element_text(size = 9))
+
+   ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
+   ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
+   grid.draw(ggkomplett2)
 #+END_SRC
 
 ** Avdelingens akutte kompliksjoner
@@ -502,7 +508,8 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
       geom_bar(stat = "identity", fill = "#0066CC") +
       coord_flip() +
       labs(y = "Antall", x = "") +
-      geom_text(aes(label = komData), hjust= -0.1, color="black", size = 3) +
+      geom_text(aes(y = komData + 0.05, label = komData), hjust= -0.1, color="black", size = 3) +
+      scale_y_continuous(expand = c(0,0)) +
       theme(
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
           axis.text.y = element_text(size = 9, color = "black"),
@@ -511,7 +518,8 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.minor.y = element_blank(),
-          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          ##panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          panel.grid.major.x = element_blank(),
           axis.title.y = element_text(size = 9),
           axis.title.x = element_text(size = 9))
 
@@ -519,6 +527,8 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
   gg.kompT$layout$clip[gg.kompT$layout$name == "panel"] <- "off"
   grid.draw(gg.kompT)
 #+END_SRC
+
+#+RESULTS: Plot4
 
 ** Behandling ved avdelingen
 
@@ -564,6 +574,7 @@ und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
       labs(x = "", y = "Andel (%)") +
       theme_bw() +
       scale_color_manual(values = ColPoint) +
+      scale_y_continuous(expand = c(0,0)) +
       coord_flip() +
           theme(
           legend.position = "top",
