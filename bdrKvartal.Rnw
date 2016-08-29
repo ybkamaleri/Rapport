@@ -1,0 +1,592 @@
+% Created 2016-08-29 ma. 13:06
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{fullpage}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{titlesec}
+\date{}
+\title{}
+\hypersetup{
+ pdfauthor={},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 24.5.1 (Org mode 8.3.4)},
+ pdflang={Norsk}}
+\begin{document}
+
+\flushleft
+
+\titlespacing*{\section}{0pt}{*0}{0pt}
+
+
+<<echo=FALSE, results=FALSE, message=FALSE, warning=FALSE>>=
+## Empty REM
+rm(list=ls())
+
+############################
+### Sjekk/installere pakker
+############################
+
+inspak <- function(pkg){
+    nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(nypkg))
+        install.packages(nypkg, dependencies = TRUE)
+
+}
+
+pakke <- c("nbReg", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable", "tibble")
+inspak(pakke)
+
+## Upload libraries
+library(nbReg)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(knitr)
+library(grid)
+library(tidyr)
+library(xtable)
+
+############### Kontroll #################
+
+setwd("~/OUS/BDR/Rapport/Data")
+##install.packages("~/Git-work/Packages/nbReg_0.0.0.9000.tar.gz")
+Filnavn <- "20160630bdr2.sav"
+
+Sykehus = 1
+
+DatoFra = "2016-01-01" # YYYY-MM-DD
+DatoTil = "2016-03-31" # YYYY-MM-DD
+
+
+##########################################
+
+MinAlder = 0
+MaxAlder = 99
+DBType = 2  # 1:Type1 2:Alle
+Kjonn  = 3  		# 1:gutt 2:jente 3:alle
+DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
+
+ColPoint <- "#FF3333"
+
+
+## hbA1c CI
+sumCIrapp <- function(data, maalvar, gpvars, conf.Int=.95) {
+
+    summ = data %>%
+        filter_(.dots = lazyeval::interp(~!is.na(var), var = as.name(maalvar))) %>%
+        group_by_(.dots = gpvars) %>%
+        summarise_(.dots = list(
+                       N = lazyeval::interp(~n()),
+                       Mean =  lazyeval::interp(~mean(var, na.rm = TRUE), var = as.name(maalvar)),
+                       SD =  lazyeval::interp(~sd(var, na.rm = T), var = as.name(maalvar))))
+    ## For sample
+    ## ciMult = qt(conf.Int/2 + .5, summ$N-1) #konvertere f.eks CI=95% blir .975
+
+    ## For total populasjon
+    ciMult = qt(conf.Int/2 + .5, summ$N) #konvertere f.eks CI=95% blir .975
+
+    summ$SE = summ$SD/sqrt(summ$N)
+    summ$CI = ciMult * summ$SE
+
+    summ.na.zero <- data %>%
+        expand_(gpvars) %>%
+        left_join(summ)
+
+    summ.na.zero[is.na(summ.na.zero)] <- 0
+
+    return(invisible(summ.na.zero)) }
+
+## Alder kategori
+alder.kat2 <- function(x, lower, upper, by,
+                       sep = "-") {
+    labs <- paste0(c(paste(seq(lower, upper - by, by = by),
+                           seq(lower + by - 1, upper - 1, by = by),
+                           sep = sep),
+                     paste(upper, "+", sep = "")), " år")
+    cut(floor(x), breaks = c(seq(lower, upper, by = by), Inf),
+        include.lowest = TRUE, right = FALSE, labels = labs)
+}
+
+
+RegData <- suppressWarnings(nbReg::nbFile(filnavn=Filnavn))
+##RegData2 <- foreign::read.spss(Filnavn, to.data.frame = TRUE, use.value.labels = FALSE) #not to convert to factor
+RegData <- nbReg::nbClean(data = RegData) #hele datasett
+
+## Kategorisert Alder til max 15+
+RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
+
+##lokal og andre
+RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
+
+RegDataLokal <- dplyr::filter(RegData, sykValg == 1) #lokal sykehus
+RegDataAndre <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
+
+########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
+rappData <- nbReg::nbText(data = RegDataLokal)
+Data <- rappData$data
+
+########### utvalgt norge data innen spesifiserte tidsrommet
+norData <- nbReg::nbText(data = RegData)
+dataNorge <- norData$data
+
+#############################
+sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
+tidRom <- rappData$figTxt[[4]]
+
+year <- as.integer(format(as.Date(DatoTil), "%Y"))
+lastyr <- as.numeric(year - 1)
+@ %def
+
+\noindent\hfill Dato: \Sexpr{format(Sys.Date(), "%Y.%m.%d")}
+
+\begin{center}
+{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
+\Sexpr{tidRom}
+\end{center}
+
+
+\section*{Antall førstegangsregistreringer og årskontroll}
+\label{sec:org4d7789b}
+Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
+\Sexpr{year}. Estimert andel årskontroller (\%) er basert på totalt antall innleverte
+årskontroller i \Sexpr{lastyr}.
+
+<<Plot1,echo=FALSE, results="asis", message=FALSE, warning=FALSE>>=
+## Lokal sykehus data eksludert poliklinisk
+sykYear <- Data %>%
+    select(Year, inn_Type, AlderKat3) %>%
+    filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
+    group_by(inn_Type, Year, AlderKat3) %>%
+    summarise(
+        count = n())
+
+## Total for Årskontroll og Førstegang
+sykYear01 <- sykYear %>%
+    group_by(inn_Type, Year) %>%
+    mutate(Totalt2 = sum(count),
+    dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
+
+sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
+tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
+tblYearAndel <- tblYear[2,]
+
+## Tabell for antall
+tbl01 <- filter(tblYear, Year==year)
+buang <- c("Year", "dumm")
+tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
+
+## Estimerte andel motatte årskontroller tabell
+
+## for alderkat året og fjoråret - bruk hele datasettet
+sykYearLyr <- RegData %>%
+    select(Year, inn_Type, AlderKat3) %>%
+    filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
+    group_by(inn_Type, Year, AlderKat3) %>%
+    summarise(
+        count = n())
+
+## for Total lastyear
+sykYear101 <- sykYearLyr %>%
+    group_by(inn_Type, Year) %>%
+    mutate(Totalt2 = sum(count))
+
+sykYearLongLyr <- as.data.frame(tidyr::spread(sykYear101, key=AlderKat3, value = count))
+sykYearLongLyr1 <- dplyr::filter(sykYearLongLyr, Year == lastyr)
+
+tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
+tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
+tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
+tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
+col <- grep("inn_Type", names(tbl02)) #finne index
+tbl03 <- tbl02[,c(col,(1:ncol(tbl02))[-col])]
+
+## Kobinere
+tblFinal <- rbind(tbl03,tbl01[,names(tbl03)])
+tblFinal <- mutate(tblFinal, dumm = ifelse(grepl("Estimert", inn_Type), 2, 1))
+tblFinal <- tblFinal[order(tblFinal$dumm),]
+tblFinal <- mutate(tblFinal, Totalt = Totalt2)
+kill <- c("Totalt2", "dumm")
+tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
+tblFinal <- as.data.frame(tblFinal)
+names(tblFinal)[1] <- ""
+tblFinal[is.na(tblFinal)] <- 0
+
+print(xtable(tblFinal, digits=0),include.rownames=F)
+@ %def
+
+\section*{Andelingen HbA1c mot landsgjennomsnittet}
+\label{sec:org5c6f71}
+
+<<Plot2,echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
+ ## ## For å ta bort Mean hvis n=1
+ ## noMean <- function(x) {
+ ##     x$Mean[x$N <= 1] <- 0
+ ##     return(x)
+ ## }
+
+ ## Bruk nbReg pakke
+ ## Total hele landet
+ hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
+ hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
+ hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+ hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
+ hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
+ hbaAlle$kjonn <- factor(hbaAlle$kjonn,
+                         levels = c(1:3),
+                         labels = c("Gutt","Jente", "Alle"))
+
+ ## Ta bort Mean hvis n=1
+ ## hbaAlle <- noMean(hbaAlle)
+
+ ## Kjønn lokal 1:lokal 2:øvrige
+ hbaLokalT <- sumCIrapp(data = Data, maalvar = "hba", gpvars = "AlderKat3")
+ hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
+ hbaLokal <- sumCIrapp(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
+ hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
+ hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
+ hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
+ hbaLokal$kjonn <- factor(hbaLokal$kjonn,
+                          levels = c(1:3),
+                          labels = c("Gutt","Jente", "Alle"))
+
+ ## Definere min og maks for y-aksen og farge
+ ymin <- ifelse(min(hbaAlle$Mean) < 5, min(hbaAlle$Mean), 5)
+ ymax <- max(hbaAlle$Mean) + 0.3
+
+ library("ggplot2")
+ gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean)) + theme_bw()
+ ## gg.lokal <- gg +
+ ##     geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
+ ##     coord_cartesian(ylim = c(ymin,ymax)) +
+ ##     scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366")) + #hente farger
+ ##     ##scale_fill_brewer() +
+ ##     theme(legend.position = 'top',
+ ##           legend.title = element_blank(),
+ ##           legend.text = element_text(size = 10),
+ ##           panel.border = element_blank(),
+ ##           panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
+ ##           panel.grid.minor.y = element_blank(),
+ ##           panel.grid.major.x = element_blank(),
+ ##           axis.text = element_text(size = 10),
+ ##           axis.text.y = element_text(vjust = 0),
+ ##           axis.line.x = element_line(size = 0.5),
+ ##           ##axis.ticks.length = unit(0),
+ ##           axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+ ##           axis.ticks.x = element_blank())
+
+ ## gg.Alle <- gg.lokal +
+ ##     geom_point(data = hbaAlle, aes(fill=kjonn), stat = 'identity', size = 5, shape = 18,
+ ##                position = position_dodge(.9), color = "#CC3300") +
+ ##     guides(fill = guide_legend(override.aes = list(shape = NA))) +
+ ##     ylab("HbA1c") +  xlab(NULL) +
+ ##     annotate("point", x = 2, y = ymax + 0.2, shape = 18, size = 5, color = "#CC3300") +
+ ##     annotate("text", x = 2.6, y = ymax + 0.2, label = "= Landsgjennomsnittet")
+
+
+ ## ##--- testing---
+ ## cols <- c("#99CCFF", "#0066CC", "#003366")
+
+ ## (gg.test1 <- gg +
+ ##      geom_bar(data = hbaLokal, aes(fill = kjonn),
+ ##               position_dodge(0.9), stat = "identity") +
+ ##      geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
+ ##                 shape = 18, size = 5, position_dodge(0.9), stat = "identity") +
+ ##      scale_fill_manual(values = cols) +
+ ##      scale_color_manual(values = "#CC3300") +
+ ##     guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
+ ##            color = guide_legend(order = 2)) +
+ ##     theme(legend.title = element_blank(), legend.key = element_rect(colour = NA),
+ ##         legend.position = "top", legend.box = "horizontal"))
+
+
+cols <- c("#99CCFF", "#0066CC", "#003366")
+ gg.Alle <- gg +
+      geom_bar(data = hbaLokal, aes(fill = kjonn),
+               position_dodge(0.9), stat = "identity") +
+      geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
+                 shape = 18, size = 5, position_dodge(0.9), stat = "identity") +
+      scale_fill_manual(values = cols) +
+     scale_color_manual(values = ColPoint) +
+     ylim(ymin, ymax) +
+     labs(y = "HbA1c", x = "") +
+     ##guides(fill = guide_legend(override.aes = list(shape = NA))) +
+      guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
+            color = guide_legend(order = 2)) +
+     theme(legend.key = element_rect(colour = NA),
+           legend.position = "top",
+           legend.box = "horizontal",
+           legend.title = element_blank(),
+           legend.text = element_text(size = 10),
+           panel.border = element_blank(),
+           panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
+           panel.grid.minor.y = element_blank(),
+           panel.grid.major.x = element_blank(),
+           axis.text = element_text(size = 10),
+           axis.text.y = element_text(vjust = 0),
+           axis.line.x = element_line(size = 0.5),
+           axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+           axis.ticks.x = element_blank())
+
+
+
+
+
+ ## gg.testlokal <- gg +
+ ##     geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
+ ##     coord_cartesian(ylim = c(ymin,ymax)) +
+ ##     scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366"), guide = "none") + #hente farger
+
+ ##     ##scale_fill_brewer() +
+ ##     theme(legend.position = 'top',
+ ##           legend.title = element_blank(),
+ ##           legend.text = element_text(size = 10),
+ ##           panel.border = element_blank(),
+ ##           panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
+ ##           panel.grid.minor.y = element_blank(),
+ ##           panel.grid.major.x = element_blank(),
+ ##           axis.text = element_text(size = 10),
+ ##           axis.text.y = element_text(vjust = 0),
+ ##           axis.line.x = element_line(size = 0.5),
+ ##           ##axis.ticks.length = unit(0),
+ ##           axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+ ##           axis.ticks.x = element_blank())
+
+ ## gg.testAlle <- gg.testlokal +
+ ##     stat_identity(data = hbaAlle, aes(color=kjonn), geom = "point", position = position_dodge(.9), shape = 18)
+
+ ## gg.testAlle2 <- gg.testlokal +
+ ##     geom_point(data = hbaAlle, aes(fill=kjonn, color = "gjennomsnitt"),stat = 'identity', size = 5, position = position_dodge(.9)) +
+ ##     scale_shape_manual(values = 18, guide = "none") +
+ ##     scale_color_manual(values = "green", guide = "none") +
+ ##     guides(color = guide_legend(override.aes = list(shape = c(NA, 18))),
+ ##            fill = guide_legend(overrides.aes = list(fill =  c( "#99CCFF", "#0066CC", "#003366") )))
+
+
+ ##-------------------
+
+ gg.tab1 <- ggplot(hbaLokal,
+                   aes(x = AlderKat3, y = factor(kjonn), label = format(Mean, digits = 3), colour=factor(kjonn))) +
+     geom_text(size = 3, colour="black") +
+     scale_y_discrete(limits=c("Alle", "Jente", "Gutt")) +
+     theme(panel.grid.major = element_blank(),
+           legend.position = "none", #ta bort legend
+           panel.border = element_blank(),
+           axis.text = element_text(size = 10),
+           axis.text.x = element_blank(),
+           axis.ticks = element_blank()) +
+     ylab(NULL) +  xlab("Gjennomsnitt HbA1c i avdelingen")
+
+
+ library(grid)
+ Layout <- grid.layout(nrow = 2, ncol = 1, height = unit(c(1.5,0.30), c("null", "null")))
+ ## grid.show.layout(Layout)
+ vplayout <- function(...){
+     grid.newpage()
+     pushViewport(viewport(layout = Layout))
+ }
+
+ subplot <- function(x, y) viewport(layout.pos.row = x,
+                                    layout.pos.col = y)
+ mmplot <- function(a, b) {
+     vplayout()
+     print(a, vp = subplot(1, 1))
+     print(b, vp = subplot(2, 1))
+ }
+
+ mmplot(gg.Alle, gg.tab1)
+@ %def
+
+\pagebreak
+
+\section*{Avdelingens kompletthet av data}
+\label{sec:org30d7934}
+NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket nesten som
+de er fra databasen \linebreak
+
+<<Plot3,echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
+## white space og NA
+trimNJ <- function(x) {
+    x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+    x[x==""] <- NA
+    x <- ifelse(is.na(x), 0, 1)
+    return(x)
+}
+
+Data$hba1c <- as.factor(trimNJ(Data$lab_HbA1cAkerVerdi))
+Data$insulinsjokk <- as.factor(trimNJ(Data$und_inssjokk))
+Data$ketoacidose <- as.factor(trimNJ(Data$und_ketoacidose))
+Data$Oye <- as.factor(trimNJ(Data$und_Oye))
+Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
+Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
+Data$hype <- as.factor(trimNJ(Data$und_syk_hype))
+Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
+Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
+Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
+
+komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+N <- dim(komplett)[1]
+
+tblFun <- function(x){
+    tbl <- table(x)
+    res <- cbind(tbl,round(prop.table(tbl)*100,1))
+    colnames(res) <- c('Antall','Andel')
+    res
+}
+
+navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Øye", "infiltrater", "hypo", "hype", "innAkt",
+          "labLipLDL", "labResProve")
+komp1 <- do.call(rbind, lapply(komplett, tblFun))
+maxkomp <- dim(komp1)[1]
+komp2 <- komp1[seq(0,maxkomp,2),]
+komp2 <- data.frame(komp2, row.names=navn)
+komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
+## komp2$navn <- rownames(komp2) #create col with navn
+
+ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
+    coord_flip() +
+    #ylim(0,100) +
+    labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
+    geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
+    scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
+    theme(
+        axis.text.y = element_text(size = 9, color = "black"),
+        plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+        plot.title = element_text(size = 11),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_line(size = 0.5),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+
+ ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
+ ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
+ grid.draw(ggkomplett2)
+@ %def
+
+\section*{Avdelingens akutte kompliksjoner}
+\label{sec:org525fa0}
+
+Alle med  lab-BiKarbonat < 15.00 eller/og lab-pH < 7.30 i førstegangsreg. Det står
+\textbf{"DKA ved årskontroll"} i figuren sendt til meg, men vet ikke hvilken variabel den
+skal hentes fra. Ellers \textbf{Ketoacidose} og \textbf{Insulinsjokk} er totalen fra
+und-ketoacidose-ant og und-inssjokk-ant \linebreak
+<<Plot4,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
+dka <- Data[Data$lab_BiKarbonat < 15.00 | Data$lab_pH < 7.30,]
+
+dka1 <- dka %>%
+    filter(grepl("Førstegangsregistrering", inn_Type))
+dkaSum <- dim(dka1)[1]
+keto <- ifelse(is.na(Data$und_ketoacidose_ant), 0, Data$und_ketoacidose_ant)
+ketoSum <- sum(keto)
+innssj <- ifelse(is.na(Data$und_inssjokk_ant), 0, Data$und_inssjokk_ant)
+innssjSum <- sum(innssj)
+
+komNavn <- c("DKA ved\n førstegangsregistrering", "Ketoacidose", "Insulinsjokk")
+komData <-c(dkaSum, ketoSum, innssjSum)
+komTable <- data.frame(komNavn, komData)
+
+gg.komp <- ggplot(komTable, aes(x = komNavn, y = komData)) +
+    geom_bar(stat = "identity", fill = "#0066CC") +
+    coord_flip() +
+    labs(y = "Antall", x = "") +
+    geom_text(aes(y = komData + 0.05, label = komData), hjust= -0.1, color="black", size = 3) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme(
+        plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+        axis.text.y = element_text(size = 9, color = "black"),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_line(size = 0.5),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        ##panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+        panel.grid.major.x = element_blank(),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+
+gg.kompT <- ggplot_gtable(ggplot_build(gg.komp))
+gg.kompT$layout$clip[gg.kompT$layout$name == "panel"] <- "off"
+grid.draw(gg.kompT)
+@ %def
+
+\section*{Behandling ved avdelingen}
+\label{sec:orgda22947}
+
+<<Plot5,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
+trimJa <- function(x) {
+    x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+    x <- ifelse(x!="Ja", 0, 1)
+    return(x)
+}
+
+behNavn <- c("Penn", "Pumpe", "CGM")
+
+## Lokal
+behData <- dplyr::select(Data, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+behLokal <- as.data.frame(lapply(behData[,], trimJa))
+
+behLokalp <- do.call(rbind, lapply(behLokal, tblFun))
+maxBehL <- dim(behLokalp)[1]
+behLokalp <- behLokalp[seq(0,maxBehL,2),]
+behLokalp <- data.frame(behLokalp, row.names=behNavn)
+behLokalp <- tibble::rownames_to_column(behLokalp, "navn") #convert row.names
+behLokalp <- dplyr::mutate(behLokalp, sykValg = 1) #lokal
+
+
+## Norge
+behNorge <- dplyr::select(dataNorge, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+behAlle <- as.data.frame(lapply(behNorge[,], trimJa))
+
+behAllep <- do.call(rbind, lapply(behAlle, tblFun))
+maxBehA <- dim(behAllep)[1]
+behAllep <- behAllep[seq(0,maxBehA,2),]
+behAllep <- data.frame(behAllep, row.names=behNavn)
+behAllep <- tibble::rownames_to_column(behAllep, "navn") #convert row.names
+behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
+
+## Figur
+
+ggplot(NULL, aes(x = navn, y = Andel)) +
+    geom_bar(data = behLokalp, stat = "identity", fill = "#0066CC") +
+    geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
+    labs(x = "", y = "Andel (%)") +
+    theme_bw() +
+    scale_color_manual(values = ColPoint) +
+    scale_y_continuous(expand = c(0,0)) +
+    coord_flip() +
+        theme(
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.key = element_rect(color = "white"),
+        axis.text.y = element_text(color = "black", size = 9),
+        plot.margin = unit(c(0,0.5,0,0), "cm"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_line(size = 0.5),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+@ %def
+\end{document}
