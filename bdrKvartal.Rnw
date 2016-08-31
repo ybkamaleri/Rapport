@@ -1,4 +1,4 @@
-% Created 2016-08-29 ma. 13:06
+% Created 2016-08-31 on. 11:22
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -155,13 +155,12 @@ lastyr <- as.numeric(year - 1)
 \noindent\hfill Dato: \Sexpr{format(Sys.Date(), "%Y.%m.%d")}
 
 \begin{center}
-{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
-\Sexpr{tidRom}
+\textbf{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
+\textbf{\Sexpr{tidRom}}
 \end{center}
 
-
 \section*{Antall førstegangsregistreringer og årskontroll}
-\label{sec:org4d7789b}
+\label{sec:org3d8d53f}
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (\%) er basert på totalt antall innleverte
 årskontroller i \Sexpr{lastyr}.
@@ -230,7 +229,7 @@ print(xtable(tblFinal, digits=0),include.rownames=F)
 @ %def
 
 \section*{Andelingen HbA1c mot landsgjennomsnittet}
-\label{sec:org5c6f71}
+\label{sec:org243a8d4}
 
 <<Plot2,echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
  ## ## For å ta bort Mean hvis n=1
@@ -414,7 +413,7 @@ cols <- c("#99CCFF", "#0066CC", "#003366")
 \pagebreak
 
 \section*{Avdelingens kompletthet av data}
-\label{sec:org30d7934}
+\label{sec:org7828144}
 NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket nesten som
 de er fra databasen \linebreak
 
@@ -483,7 +482,7 @@ ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", f
 @ %def
 
 \section*{Avdelingens akutte kompliksjoner}
-\label{sec:org525fa0}
+\label{sec:org160323d}
 
 Alle med  lab-BiKarbonat < 15.00 eller/og lab-pH < 7.30 i førstegangsreg. Det står
 \textbf{"DKA ved årskontroll"} i figuren sendt til meg, men vet ikke hvilken variabel den
@@ -529,7 +528,7 @@ grid.draw(gg.kompT)
 @ %def
 
 \section*{Behandling ved avdelingen}
-\label{sec:orgda22947}
+\label{sec:org34db9e7}
 
 <<Plot5,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 trimJa <- function(x) {

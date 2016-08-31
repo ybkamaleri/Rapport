@@ -147,10 +147,13 @@
 #+LATEX: \noindent\hfill Dato: \Sexpr{format(Sys.Date(), "%Y.%m.%d")}
 
 #+BEGIN_CENTER
-#+LATEX: {\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
-\Sexpr{tidRom}
+#+LATEX: \textbf{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
+#+LATEX: \textbf{\Sexpr{tidRom}}
 #+END_CENTER
 
+# #+LATEX: \begin{center}
+# #+LATEX: \line(1,0){450}
+# #+LATEX: \end{center}
 
 ** Antall førstegangsregistreringer og årskontroll
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
