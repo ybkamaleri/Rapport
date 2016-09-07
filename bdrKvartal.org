@@ -74,6 +74,14 @@
 
   ColPoint <- "#FF3333"
 
+  ## hbaAIc Mean
+  sumMean <- function(data, maalvar, filvar, gpvars) {
+      summ <- data %>%
+          filter_(.dots = lazyeval::interp(~!is.na(var), var = as.name(maalvar))) %>%
+          group_by_(.dots = gpvars) %>%
+          summarise_(.dots = list(
+                     Mean = lazyeval::interp(~mean(var, na.rm = TRUE), var = as.name(maalvar))))
+  }
 
   ## hbA1c CI
   sumCIrapp <- function(data, maalvar, gpvars, conf.Int=.95) {
@@ -242,19 +250,43 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
    ## Bruk nbReg pakke
    ## Total hele landet
-   hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
-   hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
-   hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
-   hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
-   hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
-   hbaAlle$kjonn <- factor(hbaAlle$kjonn,
+   ## hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
+   ## hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
+   ## hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+   ## hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
+   ## hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
+   ## hbaAlle$kjonn <- factor(hbaAlle$kjonn,
+   ##                         levels = c(1:3),
+   ##                         labels = c("Gutt","Jente", "Alle"))
+
+  ## Total hele landet
+  hbaAT <- sumMean(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3") %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(3))
+
+  ##Gutt
+  hbaA <- sumMean(data = dataNorge[dataNorge$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaAG <- as.data.frame(hbaA) %>% select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(1))
+
+  ##Jente
+  hbaA <- sumMean(data = dataNorge[dataNorge$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaAJ <- as.data.frame(hbaA) %>% select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(2))
+
+  hbaAlleK <- dplyr::full_join(hbaAG, hbaAJ)
+  hbaAlle <- dplyr::full_join(hbaAT, hbaAlleK)
+  hbaAlle$kjonn <- factor(hbaAlle$kjonn,
                            levels = c(1:3),
                            labels = c("Gutt","Jente", "Alle"))
 
-   ## Ta bort Mean hvis n=1
-   ## hbaAlle <- noMean(hbaAlle)
 
-   ## Kjønn lokal 1:lokal 2:øvrige
+  ## Ta bort Mean hvis n=1
+  ## hbaAlle <- noMean(hbaAlle)
+
+   ## ## Kjønn lokal 1:lokal 2:øvrige
    hbaLokalT <- sumCIrapp(data = Data, maalvar = "hba", gpvars = "AlderKat3")
    hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
    hbaLokal <- sumCIrapp(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
@@ -264,6 +296,30 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
    hbaLokal$kjonn <- factor(hbaLokal$kjonn,
                             levels = c(1:3),
                             labels = c("Gutt","Jente", "Alle"))
+
+  hbaLT <- sumMean(data = Data, maalvar = "hba", gpvars = "AlderKat3") %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(3))
+
+  ##Gutt
+  hbaL <- sumMean(data = Data[Data$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaLG <- as.data.frame(hbaA) %>% select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(1))
+
+  ##Jente
+  hbaL <- sumMean(data = Data[Data$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaLJ <- as.data.frame(hbaA) %>% select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2])/nrow(.)))) %>%
+      mutate(., kjonn = factor(2))
+
+  hbaLokalK <- dplyr::full_join(hbaLG, hbaLJ)
+  hbaLokal <- dplyr::full_join(hbaLT, hbaLokalK)
+  hbaLokal$kjonn <- factor(hbaLokal$kjonn,
+                           levels = c(1:3),
+                           labels = c("Gutt","Jente", "Alle"))
+
+
 
    ## Definere min og maks for y-aksen og farge
    ymin <- ifelse(min(hbaAlle$Mean) < 5, min(hbaAlle$Mean), 5)
@@ -318,9 +374,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   cols <- c("#99CCFF", "#0066CC", "#003366")
    gg.Alle <- gg +
         geom_bar(data = hbaLokal, aes(fill = kjonn),
-                 position_dodge(0.9), stat = "identity") +
+                 position = position_dodge(0.9), stat = "identity") +
         geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
-                   shape = 18, size = 5, position_dodge(0.9), stat = "identity") +
+                   shape = 18, size = 5, position = position_dodge(0.9), stat = "identity") +
         scale_fill_manual(values = cols) +
        scale_color_manual(values = ColPoint) +
        ylim(ymin, ymax) +
