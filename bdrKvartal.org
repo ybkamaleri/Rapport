@@ -8,6 +8,7 @@
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:(not LOGBOOK) todo:t pri:nil tags:t
 #+MACRO: NEWLINE @@latex:\\@@ @@html:<br>@@
 #+MACRO: BREAK @@latex:\linebreak@@ @@html:<br>@@
+#+MACRO: SPACE @@latex:\vspace{5mm}@@
 
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
@@ -20,7 +21,6 @@
 #+LATEX:\flushleft
 
 #+LATEX: \titlespacing*{\section}{0pt}{*0}{0pt}
-
 
 #+CAPTION: Setup
 #+ATTR_RAVEL: echo=FALSE, results=FALSE, message=FALSE, warning=FALSE
@@ -73,7 +73,25 @@
   DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
 
   ColPoint <- "#FF3333"
+  options(digits = 3)
 
+  ## hbaAIc Mean
+  sumMean <- function(data, maalvar, filvar, gpvars) {
+
+      summ <- data %>%
+          filter_(.dots = lazyeval::interp(~!is.na(var), var = as.name(maalvar))) %>%
+          group_by_(.dots = gpvars) %>%
+          summarise_(.dots = list(
+                         Mean = lazyeval::interp(~mean(var, na.rm = TRUE), var = as.name(maalvar))))
+
+      summ.na.zero <- data %>%
+          expand_(gpvars) %>%
+          left_join(summ)
+
+      ##summ.na.zero[is.na(summ.na.zero)] <- 0
+
+      return(invisible(summ.na.zero))
+  }
 
   ## hbA1c CI
   sumCIrapp <- function(data, maalvar, gpvars, conf.Int=.95) {
@@ -150,12 +168,14 @@
 #+LATEX: \textbf{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
 #+LATEX: \textbf{\Sexpr{tidRom}}
 #+END_CENTER
+#+LATEX: \vspace*{-15mm}
 
-# #+LATEX: \begin{center}
-# #+LATEX: \line(1,0){450}
-# #+LATEX: \end{center}
+#+LATEX: \begin{center}
+#+LATEX: \line(1,0){550}
+#+LATEX: \end{center}
 
 ** Antall førstegangsregistreringer og årskontroll
+{{{SPACE}}}
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i \Sexpr{lastyr}.
@@ -234,192 +254,172 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+NAME: Plot2
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
-   ## ## For å ta bort Mean hvis n=1
-   ## noMean <- function(x) {
-   ##     x$Mean[x$N <= 1] <- 0
-   ##     return(x)
-   ## }
+  ## Bruk nbReg pakke
 
-   ## Bruk nbReg pakke
-   ## Total hele landet
-   hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
-   hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
-   hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
-   hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
-   hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
-   hbaAlle$kjonn <- factor(hbaAlle$kjonn,
+  ######################
+  ## Total hele landet
+  ######################
+  hbaATR <- sumMean(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3") %>%
+      filter(!is.na(Mean))
+  rowATR <- nrow(hbaATR)
+  hbaATF <- sumMean(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3") %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowATR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(3))
+
+  ##Gutt
+  hbaAGR <- sumMean(data = dataNorge[dataNorge$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn")) %>%
+      filter(!is.na(Mean))
+  rowAGR <- nrow(hbaAGR)
+  hbaAG <- sumMean(data = dataNorge[dataNorge$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaAGF <- as.data.frame(hbaAG) %>%
+      filter(kjonn == 1) %>%
+      select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowAGR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(1))
+
+  ##Jente
+  hbaAJR <- sumMean(data = dataNorge[dataNorge$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn")) %>%
+      filter(!is.na(Mean))
+  rowAJR <- nrow(hbaAJR)
+  hbaAJ <- sumMean(data = dataNorge[dataNorge$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaAJF <- as.data.frame(hbaAJ) %>%
+      filter(kjonn == 2) %>%
+      select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowAJR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(2))
+
+  hbaAlleK <- dplyr::full_join(hbaAGF, hbaAJF)
+  hbaAlle <- dplyr::full_join(hbaATF, hbaAlleK)
+  hbaAlle$kjonn <- factor(hbaAlle$kjonn,
+                          levels = c(1:3),
+                          labels = c("Gutt","Jente", "Alle"))
+
+
+  ## Ta bort Mean hvis n=1
+  ## hbaAlle <- noMean(hbaAlle)
+
+  #########################
+  ## LOKAL
+  #########################
+  hbaLTR <- sumMean(data = Data, maalvar = "hba", gpvars = "AlderKat3") %>%
+      filter(!is.na(Mean))
+  rowLTR <- nrow(hbaLTR)
+  hbaLTF <- sumMean(data = Data, maalvar = "hba", gpvars = "AlderKat3") %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowLTR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(3))
+
+  ##Gutt
+  hbaLGR <- sumMean(data = Data[Data$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn")) %>%
+      filter(!is.na(Mean))
+  rowLGR <- nrow(hbaLGR)
+  hbaLG <- sumMean(data = Data[Data$kjonn==1,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaLGF <- as.data.frame(hbaLG) %>%
+      filter(kjonn == 1) %>%
+      select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowLGR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(1))
+
+  ##Jente
+  hbaLJR <- sumMean(data = Data[Data$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn")) %>%
+      filter(!is.na(Mean))
+  rowLJR <- nrow(hbaLJR)
+  hbaLJ <- sumMean(data = Data[Data$kjonn==2,], maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
+  hbaLJF <- as.data.frame(hbaLJ) %>%
+      filter(kjonn == 2) %>%
+      select(AlderKat3, Mean) %>%
+      rbind(., data.frame(AlderKat3 = "Totalt", t(colSums(.[2]/rowLJR, na.rm=T)))) %>%
+      mutate(., kjonn = factor(2))
+
+  hbaLokalK <- dplyr::full_join(hbaLGF, hbaLJF)
+  hbaLokal <- dplyr::full_join(hbaLTF, hbaLokalK)
+  hbaLokal$kjonn <- factor(hbaLokal$kjonn,
                            levels = c(1:3),
                            labels = c("Gutt","Jente", "Alle"))
 
-   ## Ta bort Mean hvis n=1
-   ## hbaAlle <- noMean(hbaAlle)
-
-   ## Kjønn lokal 1:lokal 2:øvrige
-   hbaLokalT <- sumCIrapp(data = Data, maalvar = "hba", gpvars = "AlderKat3")
-   hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
-   hbaLokal <- sumCIrapp(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
-   hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
-   hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
-   hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
-   hbaLokal$kjonn <- factor(hbaLokal$kjonn,
-                            levels = c(1:3),
-                            labels = c("Gutt","Jente", "Alle"))
-
-   ## Definere min og maks for y-aksen og farge
-   ymin <- ifelse(min(hbaAlle$Mean) < 5, min(hbaAlle$Mean), 5)
-   ymax <- max(hbaAlle$Mean) + 0.3
-
-   library("ggplot2")
-   gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean)) + theme_bw()
-   ## gg.lokal <- gg +
-   ##     geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
-   ##     coord_cartesian(ylim = c(ymin,ymax)) +
-   ##     scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366")) + #hente farger
-   ##     ##scale_fill_brewer() +
-   ##     theme(legend.position = 'top',
-   ##           legend.title = element_blank(),
-   ##           legend.text = element_text(size = 10),
-   ##           panel.border = element_blank(),
-   ##           panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
-   ##           panel.grid.minor.y = element_blank(),
-   ##           panel.grid.major.x = element_blank(),
-   ##           axis.text = element_text(size = 10),
-   ##           axis.text.y = element_text(vjust = 0),
-   ##           axis.line.x = element_line(size = 0.5),
-   ##           ##axis.ticks.length = unit(0),
-   ##           axis.ticks.y = element_line(size = 0.4, colour = "grey"),
-   ##           axis.ticks.x = element_blank())
-
-   ## gg.Alle <- gg.lokal +
-   ##     geom_point(data = hbaAlle, aes(fill=kjonn), stat = 'identity', size = 5, shape = 18,
-   ##                position = position_dodge(.9), color = "#CC3300") +
-   ##     guides(fill = guide_legend(override.aes = list(shape = NA))) +
-   ##     ylab("HbA1c") +  xlab(NULL) +
-   ##     annotate("point", x = 2, y = ymax + 0.2, shape = 18, size = 5, color = "#CC3300") +
-   ##     annotate("text", x = 2.6, y = ymax + 0.2, label = "= Landsgjennomsnittet")
 
 
-   ## ##--- testing---
-   ## cols <- c("#99CCFF", "#0066CC", "#003366")
-
-   ## (gg.test1 <- gg +
-   ##      geom_bar(data = hbaLokal, aes(fill = kjonn),
-   ##               position_dodge(0.9), stat = "identity") +
-   ##      geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
-   ##                 shape = 18, size = 5, position_dodge(0.9), stat = "identity") +
-   ##      scale_fill_manual(values = cols) +
-   ##      scale_color_manual(values = "#CC3300") +
-   ##     guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
-   ##            color = guide_legend(order = 2)) +
-   ##     theme(legend.title = element_blank(), legend.key = element_rect(colour = NA),
-   ##         legend.position = "top", legend.box = "horizontal"))
-
-
+  ## Definere min/maks for y-aksen og farge
+  ymin <- 5
+  ymax <- max(hbaAlle$Mean, na.rm=TRUE) + 1
   cols <- c("#99CCFF", "#0066CC", "#003366")
-   gg.Alle <- gg +
-        geom_bar(data = hbaLokal, aes(fill = kjonn),
-                 position_dodge(0.9), stat = "identity") +
-        geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
-                   shape = 18, size = 5, position_dodge(0.9), stat = "identity") +
-        scale_fill_manual(values = cols) +
-       scale_color_manual(values = ColPoint) +
-       ylim(ymin, ymax) +
-       labs(y = "HbA1c", x = "") +
-       ##guides(fill = guide_legend(override.aes = list(shape = NA))) +
-        guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
-              color = guide_legend(order = 2)) +
-       theme(legend.key = element_rect(colour = NA),
-             legend.position = "top",
-             legend.box = "horizontal",
-             legend.title = element_blank(),
-             legend.text = element_text(size = 10),
-             panel.border = element_blank(),
-             panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
-             panel.grid.minor.y = element_blank(),
-             panel.grid.major.x = element_blank(),
-             axis.text = element_text(size = 10),
-             axis.text.y = element_text(vjust = 0),
-             axis.line.x = element_line(size = 0.5),
-             axis.ticks.y = element_line(size = 0.4, colour = "grey"),
-             axis.ticks.x = element_blank())
+
+  ## konvertere Mean til numeric
+  hbaLokal <- transform(hbaLokal, Mean = as.numeric(Mean))
+  hbaAlle <- transform(hbaAlle, Mean = as.numeric(Mean))
+
+  ## Figur
+  library("ggplot2")
+  gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean)) + theme_bw()
+
+  gg.Alle <- gg +
+      geom_bar(data = hbaLokal, aes(fill = kjonn),
+               position = "dodge", stat = "identity", na.rm = TRUE) +
+      geom_point(data = hbaAlle, aes(fill = kjonn, color = "Landsgjennomsnitt"),
+                 shape = 18, size = 5, position = position_dodge(0.9), stat = "identity", na.rm = TRUE) +
+      scale_fill_manual(values = cols) +
+      scale_color_manual(values = ColPoint) +
+      ##ylim(ymin, ymax) +
+      coord_cartesian(ylim=c(ymin,ymax)) +
+      labs(y = "HbA1c", x = "") +
+      ##guides(fill = guide_legend(override.aes = list(shape = NA))) +
+      guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
+             color = guide_legend(order = 2)) +
+      theme(legend.key = element_rect(colour = NA),
+            legend.position = "top",
+            legend.box = "horizontal",
+            legend.title = element_blank(),
+            legend.text = element_text(size = 10),
+            panel.border = element_blank(),
+            panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
+            panel.grid.minor.y = element_blank(),
+            panel.grid.major.x = element_blank(),
+            axis.text = element_text(size = 10),
+            axis.text.y = element_text(vjust = 0),
+            axis.line.x = element_line(size = 0.5),
+            axis.ticks.y = element_line(size = 0.4, colour = "grey"),
+            axis.ticks.x = element_blank())
+
+  ## Tabell
+  gg.tab2 <- ggplot(hbaLokal,
+                    aes(x = AlderKat3, y = factor(kjonn), colour=factor(kjonn))) +
+      ##geom_text(size = 3, colour="black", parse = TRUE) +
+      geom_text(aes(label=ifelse(is.na(Mean), "-", sprintf("%1.2f", Mean))), color="black", size = 3.5) +
+      scale_y_discrete(limits=c("Alle", "Jente", "Gutt")) +
+      theme(panel.grid.major = element_blank(),
+            legend.position = "none", #ta bort legend
+            panel.border = element_blank(),
+            axis.text = element_text(size = 10),
+            axis.text.x = element_blank(),
+            axis.ticks = element_blank()) +
+      ylab(NULL) +  xlab("Gjennomsnitt HbA1c i avdelingen")
 
 
 
+  library(grid)
+  Layout <- grid.layout(nrow = 2, ncol = 1, height = unit(c(1.5,0.30), c("null", "null")))
+  ## grid.show.layout(Layout)
+  vplayout <- function(...){
+      grid.newpage()
+      pushViewport(viewport(layout = Layout))
+  }
 
+  subplot <- function(x, y) viewport(layout.pos.row = x,
+                                     layout.pos.col = y)
+  mmplot <- function(a, b) {
+      vplayout()
+      print(a, vp = subplot(1, 1))
+      print(b, vp = subplot(2, 1))
+  }
 
-   ## gg.testlokal <- gg +
-   ##     geom_bar(data = hbaLokal, aes(fill=kjonn), position = position_dodge(.9), stat = "identity") +
-   ##     coord_cartesian(ylim = c(ymin,ymax)) +
-   ##     scale_fill_manual(values = c( "#99CCFF", "#0066CC", "#003366"), guide = "none") + #hente farger
-
-   ##     ##scale_fill_brewer() +
-   ##     theme(legend.position = 'top',
-   ##           legend.title = element_blank(),
-   ##           legend.text = element_text(size = 10),
-   ##           panel.border = element_blank(),
-   ##           panel.grid.major.y = element_line(colour = "grey", size = 0.4, linetype = 2),
-   ##           panel.grid.minor.y = element_blank(),
-   ##           panel.grid.major.x = element_blank(),
-   ##           axis.text = element_text(size = 10),
-   ##           axis.text.y = element_text(vjust = 0),
-   ##           axis.line.x = element_line(size = 0.5),
-   ##           ##axis.ticks.length = unit(0),
-   ##           axis.ticks.y = element_line(size = 0.4, colour = "grey"),
-   ##           axis.ticks.x = element_blank())
-
-   ## gg.testAlle <- gg.testlokal +
-   ##     stat_identity(data = hbaAlle, aes(color=kjonn), geom = "point", position = position_dodge(.9), shape = 18)
-
-   ## gg.testAlle2 <- gg.testlokal +
-   ##     geom_point(data = hbaAlle, aes(fill=kjonn, color = "gjennomsnitt"),stat = 'identity', size = 5, position = position_dodge(.9)) +
-   ##     scale_shape_manual(values = 18, guide = "none") +
-   ##     scale_color_manual(values = "green", guide = "none") +
-   ##     guides(color = guide_legend(override.aes = list(shape = c(NA, 18))),
-   ##            fill = guide_legend(overrides.aes = list(fill =  c( "#99CCFF", "#0066CC", "#003366") )))
-
-
-   ##-------------------
-
-   gg.tab1 <- ggplot(hbaLokal,
-                     aes(x = AlderKat3, y = factor(kjonn), label = format(Mean, digits = 3), colour=factor(kjonn))) +
-       geom_text(size = 3, colour="black") +
-       scale_y_discrete(limits=c("Alle", "Jente", "Gutt")) +
-       theme(panel.grid.major = element_blank(),
-             legend.position = "none", #ta bort legend
-             panel.border = element_blank(),
-             axis.text = element_text(size = 10),
-             axis.text.x = element_blank(),
-             axis.ticks = element_blank()) +
-       ylab(NULL) +  xlab("Gjennomsnitt HbA1c i avdelingen")
-
-
-   library(grid)
-   Layout <- grid.layout(nrow = 2, ncol = 1, height = unit(c(1.5,0.30), c("null", "null")))
-   ## grid.show.layout(Layout)
-   vplayout <- function(...){
-       grid.newpage()
-       pushViewport(viewport(layout = Layout))
-   }
-
-   subplot <- function(x, y) viewport(layout.pos.row = x,
-                                      layout.pos.col = y)
-   mmplot <- function(a, b) {
-       vplayout()
-       print(a, vp = subplot(1, 1))
-       print(b, vp = subplot(2, 1))
-   }
-
-   mmplot(gg.Alle, gg.tab1)
+  mmplot(gg.Alle, gg.tab2)
 #+END_SRC
 
 #+LATEX: \pagebreak
 
 ** Avdelingens kompletthet av data
-NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket nesten som
-de er fra databasen {{{BREAK}}}
-
+{{{SPACE}}}
 #+NAME: Plot3
-#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.5, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
   ## white space og NA
   trimNJ <- function(x) {
@@ -435,12 +435,12 @@ de er fra databasen {{{BREAK}}}
   Data$Oye <- as.factor(trimNJ(Data$und_Oye))
   Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
   Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
-  Data$hype <- as.factor(trimNJ(Data$und_syk_hype))
+  Data$col <- as.factor(trimNJ(Data$und_syk_col))
   Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
   Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
   Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
   N <- dim(komplett)[1]
 
   tblFun <- function(x){
@@ -450,8 +450,8 @@ de er fra databasen {{{BREAK}}}
       res
   }
 
-  navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Øye", "infiltrater", "hypo", "hype", "innAkt",
-            "labLipLDL", "labResProve")
+  navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Celiaki", "Fysisk aktivitetet",
+            "LDL", "Urin us.")
   komp1 <- do.call(rbind, lapply(komplett, tblFun))
   maxkomp <- dim(komp1)[1]
   komp2 <- komp1[seq(0,maxkomp,2),]
@@ -459,16 +459,17 @@ de er fra databasen {{{BREAK}}}
   komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
   ## komp2$navn <- rownames(komp2) #create col with navn
 
-  ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
+  ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) +
+      geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
-      #ylim(0,100) +
-      labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
+      labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
       geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
       scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
+      scale_x_discrete(limits=navn) +
       theme(
           axis.text.y = element_text(size = 9, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-          plot.title = element_text(size = 11),
+          plot.title = element_text(size = 10),
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.x = element_blank(),
@@ -479,17 +480,13 @@ de er fra databasen {{{BREAK}}}
           axis.title.y = element_text(size = 9),
           axis.title.x = element_text(size = 9))
 
-   ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
-   ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
-   grid.draw(ggkomplett2)
+  ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
+  ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
+  grid.draw(ggkomplett2)
 #+END_SRC
 
 ** Avdelingens akutte kompliksjoner
-
-Alle med  lab-BiKarbonat < 15.00 eller/og lab-pH < 7.30 i førstegangsreg. Det står
-*"DKA ved årskontroll"* i figuren sendt til meg, men vet ikke hvilken variabel den
-skal hentes fra. Ellers *Ketoacidose* og *Insulinsjokk* er totalen fra
-und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
+{{{SPACE}}}
 #+NAME: Plot4
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
