@@ -8,6 +8,7 @@
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:(not LOGBOOK) todo:t pri:nil tags:t
 #+MACRO: NEWLINE @@latex:\\@@ @@html:<br>@@
 #+MACRO: BREAK @@latex:\linebreak@@ @@html:<br>@@
+#+MACRO: SPACE @@latex:\vspace{5mm}@@
 
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
@@ -20,7 +21,6 @@
 #+LATEX:\flushleft
 
 #+LATEX: \titlespacing*{\section}{0pt}{*0}{0pt}
-
 
 #+CAPTION: Setup
 #+ATTR_RAVEL: echo=FALSE, results=FALSE, message=FALSE, warning=FALSE
@@ -168,12 +168,14 @@
 #+LATEX: \textbf{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
 #+LATEX: \textbf{\Sexpr{tidRom}}
 #+END_CENTER
+#+LATEX: \vspace*{-15mm}
 
-# #+LATEX: \begin{center}
-# #+LATEX: \line(1,0){450}
-# #+LATEX: \end{center}
+#+LATEX: \begin{center}
+#+LATEX: \line(1,0){550}
+#+LATEX: \end{center}
 
 ** Antall førstegangsregistreringer og årskontroll
+{{{SPACE}}}
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i \Sexpr{lastyr}.
@@ -252,24 +254,11 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+NAME: Plot2
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
-  ## ## For å ta bort Mean hvis n=1
-  ## noMean <- function(x) {
-  ##     x$Mean[x$N <= 1] <- 0
-  ##     return(x)
-  ## }
-
   ## Bruk nbReg pakke
-  ## Total hele landet
-  ## hbaAlleT <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3")
-  ## hbaAlleT <- mutate(hbaAlleT, kjonn = factor(3))
-  ## hbaAlle <- sumCIrapp(data = dataNorge, maalvar = "hba", gpvars = c("AlderKat3", "kjonn"))
-  ## hbaAlle <- dplyr::full_join(hbaAlle, hbaAlleT)
-  ## hbaAlle$kjonn <- ifelse(is.na(hbaAlle$kjonn), 3, hbaAlle$kjonn)
-  ## hbaAlle$kjonn <- factor(hbaAlle$kjonn,
-  ##                         levels = c(1:3),
-  ##                         labels = c("Gutt","Jente", "Alle"))
 
+  ######################
   ## Total hele landet
+  ######################
   hbaATR <- sumMean(data = dataNorge, maalvar = "hba", gpvars = "AlderKat3") %>%
       filter(!is.na(Mean))
   rowATR <- nrow(hbaATR)
@@ -309,16 +298,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## Ta bort Mean hvis n=1
   ## hbaAlle <- noMean(hbaAlle)
 
-  ## ## ## Kjønn lokal 1:lokal 2:øvrige
-  ## hbaLokalT <- sumCIrapp(data = Data, maalvar = "hba", gpvars = "AlderKat3")
-  ## hbaLokalT <- mutate(hbaLokalT, kjonn = as.integer(3))
-  ## hbaLokal <- sumCIrapp(data = Data, maalvar = "hba", gpvars = c("AlderKat3","kjonn"))
-  ## hbaLokal$kjonn <- as.integer(hbaLokal$kjonn)
-  ## hbaLokal <- dplyr::full_join(hbaLokalT, hbaLokal)
-  ## hbaLokal$kjonn <- ifelse(is.na(hbaLokal$kjonn), 3, hbaLokal$kjonn)
-  ## hbaLokal$kjonn <- factor(hbaLokal$kjonn,
-  ##                          levels = c(1:3),
-  ##                          labels = c("Gutt","Jente", "Alle"))
+  #########################
+  ## LOKAL
+  #########################
   hbaLTR <- sumMean(data = Data, maalvar = "hba", gpvars = "AlderKat3") %>%
       filter(!is.na(Mean))
   rowLTR <- nrow(hbaLTR)
@@ -356,26 +338,19 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
 
 
-  ## Definere min og maks for y-aksen og farge
+  ## Definere min/maks for y-aksen og farge
   ymin <- 5
   ymax <- max(hbaAlle$Mean, na.rm=TRUE) + 1
+  cols <- c("#99CCFF", "#0066CC", "#003366")
 
+  ## konvertere Mean til numeric
   hbaLokal <- transform(hbaLokal, Mean = as.numeric(Mean))
   hbaAlle <- transform(hbaAlle, Mean = as.numeric(Mean))
 
-  ## gg.test <- ggplot(data=hbaLokal, aes(fill=kjonn, x=AlderKat3, y=Mean)) +
-  ##     geom_bar(position = position_dodge(0.9), stat = "identity", na.rm = TRUE) +
-  ##     coord_cartesian(ylim = c(5,10))
-
-  ## gg.test1 <- ggplot(data=hbaLokal, aes(fill=kjonn, x=AlderKat3, y=Mean)) +
-  ##     geom_point(position = position_dodge(0.9), stat = "identity", na.rm = TRUE) +
-  ##     ylim(5, 10)
-
-
+  ## Figur
   library("ggplot2")
   gg <- ggplot(NULL, aes(x=AlderKat3, y=Mean)) + theme_bw()
 
-  cols <- c("#99CCFF", "#0066CC", "#003366")
   gg.Alle <- gg +
       geom_bar(data = hbaLokal, aes(fill = kjonn),
                position = "dodge", stat = "identity", na.rm = TRUE) +
@@ -384,7 +359,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       scale_fill_manual(values = cols) +
       scale_color_manual(values = ColPoint) +
       ##ylim(ymin, ymax) +
-      coord_cartesian(ylim=c(5,ymax)) +
+      coord_cartesian(ylim=c(ymin,ymax)) +
       labs(y = "HbA1c", x = "") +
       ##guides(fill = guide_legend(override.aes = list(shape = NA))) +
       guides(fill = guide_legend(order = 1, override.aes = list(shape = NA)),
@@ -404,6 +379,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
             axis.ticks.y = element_line(size = 0.4, colour = "grey"),
             axis.ticks.x = element_blank())
 
+  ## Tabell
   gg.tab2 <- ggplot(hbaLokal,
                     aes(x = AlderKat3, y = factor(kjonn), colour=factor(kjonn))) +
       ##geom_text(size = 3, colour="black", parse = TRUE) +
@@ -441,11 +417,9 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+LATEX: \pagebreak
 
 ** Avdelingens kompletthet av data
-NB! Fint om dere kan gi riktig navn til variablene. Navnene er bare pluket nesten som
-de er fra databasen {{{BREAK}}}
-
+{{{SPACE}}}
 #+NAME: Plot3
-#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.5, fig.align='center', dev='pdf', fig.path="graphics/bdr"
+#+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
   ## white space og NA
   trimNJ <- function(x) {
@@ -461,12 +435,12 @@ de er fra databasen {{{BREAK}}}
   Data$Oye <- as.factor(trimNJ(Data$und_Oye))
   Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
   Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
-  Data$hype <- as.factor(trimNJ(Data$und_syk_hype))
+  Data$col <- as.factor(trimNJ(Data$und_syk_col))
   Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
   Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
   Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, hype, innAkt, labLipLDL, labResProve))
+  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
   N <- dim(komplett)[1]
 
   tblFun <- function(x){
@@ -476,8 +450,8 @@ de er fra databasen {{{BREAK}}}
       res
   }
 
-  navn <- c("hba1c", "insulinsjokk", "ketoacidose", "Øye", "infiltrater", "hypo", "hype", "innAkt",
-            "labLipLDL", "labResProve")
+  navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Celiaki", "Fysisk aktivitetet",
+            "LDL", "Urin us.")
   komp1 <- do.call(rbind, lapply(komplett, tblFun))
   maxkomp <- dim(komp1)[1]
   komp2 <- komp1[seq(0,maxkomp,2),]
@@ -485,16 +459,17 @@ de er fra databasen {{{BREAK}}}
   komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
   ## komp2$navn <- rownames(komp2) #create col with navn
 
-  ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) + geom_bar(stat="identity", fill =  "#0066CC") +
+  ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) +
+      geom_bar(stat="identity", fill =  "#0066CC") +
       coord_flip() +
-      #ylim(0,100) +
-      labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "", size = 10) +
+      labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
       geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
       scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
+      scale_x_discrete(limits=navn) +
       theme(
           axis.text.y = element_text(size = 9, color = "black"),
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-          plot.title = element_text(size = 11),
+          plot.title = element_text(size = 10),
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.x = element_blank(),
@@ -505,17 +480,13 @@ de er fra databasen {{{BREAK}}}
           axis.title.y = element_text(size = 9),
           axis.title.x = element_text(size = 9))
 
-   ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
-   ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
-   grid.draw(ggkomplett2)
+  ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
+  ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
+  grid.draw(ggkomplett2)
 #+END_SRC
 
 ** Avdelingens akutte kompliksjoner
-
-Alle med  lab-BiKarbonat < 15.00 eller/og lab-pH < 7.30 i førstegangsreg. Det står
-*"DKA ved årskontroll"* i figuren sendt til meg, men vet ikke hvilken variabel den
-skal hentes fra. Ellers *Ketoacidose* og *Insulinsjokk* er totalen fra
-und-ketoacidose-ant og und-inssjokk-ant {{{BREAK}}}
+{{{SPACE}}}
 #+NAME: Plot4
 #+ATTR_RAVEL: echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr"
 #+BEGIN_SRC R
