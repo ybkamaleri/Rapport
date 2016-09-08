@@ -1,4 +1,4 @@
-% Created 2016-09-08 to. 13:17
+% Created 2016-09-08 to. 14:41
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -182,7 +182,7 @@ lastyr <- as.numeric(year - 1)
 \end{center}
 
 \section*{Antall førstegangsregistreringer og årskontroll}
-\label{sec:org61e1acb}
+\label{sec:orgbd1f6c4}
 \vspace{5mm}
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (\%) er basert på totalt antall innleverte
@@ -252,7 +252,7 @@ print(xtable(tblFinal, digits=0),include.rownames=F)
 @ %def
 
 \section*{Andelingen HbA1c mot landsgjennomsnittet}
-\label{sec:org592db26}
+\label{sec:orga304cb7}
 
 <<Plot2,echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 ## Bruk nbReg pakke
@@ -418,7 +418,7 @@ mmplot(gg.Alle, gg.tab2)
 \pagebreak
 
 \section*{Avdelingens kompletthet av data}
-\label{sec:org8fdc322}
+\label{sec:org2737d9c}
 \vspace{5mm}
 <<Plot3,echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 ## white space og NA
@@ -450,7 +450,7 @@ tblFun <- function(x){
     res
 }
 
-navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Celiaki", "Fysisk aktivitetet",
+navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Cøliaki", "Fysisk aktivitetet",
           "LDL", "Urin us.")
 komp1 <- do.call(rbind, lapply(komplett, tblFun))
 maxkomp <- dim(komp1)[1]
@@ -486,7 +486,7 @@ grid.draw(ggkomplett2)
 @ %def
 
 \section*{Avdelingens akutte kompliksjoner}
-\label{sec:orgda0214b}
+\label{sec:org688b00a}
 \vspace{5mm}
 <<Plot4,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 dka <- Data[Data$lab_BiKarbonat < 15.00 | Data$lab_pH < 7.30,]
@@ -528,7 +528,7 @@ grid.draw(gg.kompT)
 @ %def
 
 \section*{Behandling ved avdelingen}
-\label{sec:org3513f6}
+\label{sec:orgdb71290}
 
 <<Plot5,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 trimJa <- function(x) {

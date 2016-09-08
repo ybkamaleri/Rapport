@@ -450,7 +450,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       res
   }
 
-  navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Celiaki", "Fysisk aktivitetet",
+  navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Cøliaki", "Fysisk aktivitetet",
             "LDL", "Urin us.")
   komp1 <- do.call(rbind, lapply(komplett, tblFun))
   maxkomp <- dim(komp1)[1]
