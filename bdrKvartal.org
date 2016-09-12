@@ -58,7 +58,7 @@
   ##install.packages("~/Git-work/Packages/nbReg_0.0.0.9000.tar.gz")
   Filnavn <- "20160630bdr2.sav"
 
-  Sykehus = 1
+  Sykehus = 15
 
   DatoFra = "2016-01-01" # YYYY-MM-DD
   DatoTil = "2016-03-31" # YYYY-MM-DD
@@ -508,7 +508,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
       geom_bar(stat = "identity", fill = "#0066CC") +
       coord_flip() +
       labs(y = "Antall", x = "") +
-      geom_text(aes(y = komData + 0.05, label = komData), hjust= -0.1, color="black", size = 3) +
+      geom_text(aes(y = komData + 0.03, label = komData), hjust= -0.1, color="black", size = 3) +
       scale_y_continuous(expand = c(0,0)) +
       theme(
           plot.margin = unit(c(0,2,0.5,0.5), "cm"),
@@ -568,15 +568,15 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 
   ## Figur
 
-  ggplot(NULL, aes(x = navn, y = Andel)) +
+  gg.fig4 <- ggplot(NULL, aes(x = navn, y = Andel)) +
       geom_bar(data = behLokalp, stat = "identity", fill = "#0066CC") +
-      geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
+  geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
       labs(x = "", y = "Andel (%)") +
       theme_bw() +
       scale_color_manual(values = ColPoint) +
       scale_y_continuous(expand = c(0,0)) +
       coord_flip() +
-          theme(
+      theme(
           legend.position = "top",
           legend.title = element_blank(),
           legend.text = element_text(size = 10),
@@ -591,4 +591,8 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
           axis.line.x = element_line(size = 0.5),
           axis.title.y = element_text(size = 9),
           axis.title.x = element_text(size = 9))
+
+  gg.fig4T <- ggplot_gtable(ggplot_build(gg.fig4))
+  gg.fig4T$layout$clip[gg.fig4T$layout$name == "panel"] <- "off"
+  grid.draw(gg.fig4T)
 #+END_SRC
