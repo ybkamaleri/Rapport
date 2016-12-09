@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-% Created 2016-09-08 to. 14:41
-=======
-% Created 2016-09-12 ma. 23:36
->>>>>>> fig2
+% Created 2016-12-09 fr. 14:46
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -68,12 +64,12 @@ library(xtable)
 
 setwd("~/OUS/BDR/Rapport/Data")
 ##install.packages("~/Git-work/Packages/nbReg_0.0.0.9000.tar.gz")
-Filnavn <- "20160630bdr2.sav"
+Filnavn <- "annonym20161107.sav"
 
-Sykehus = 15
+Sykehus = 1
 
 DatoFra = "2016-01-01" # YYYY-MM-DD
-DatoTil = "2016-03-31" # YYYY-MM-DD
+DatoTil = "2016-11-04" # YYYY-MM-DD
 
 
 ##########################################
@@ -158,16 +154,20 @@ RegDataLokal <- dplyr::filter(RegData, sykValg == 1) #lokal sykehus
 RegDataAndre <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
-rappData <- nbReg::nbText(data = RegDataLokal)
-Data <- rappData$data
+txtData <- nbReg::nbText(data = RegDataLokal) #For text til tidsrommet
+## Data <- rappData$data
+datoVec <- seq(as.Date(DatoFra), as.Date(DatoTil), "day")
+Data <- dplyr::filter(RegDataLokal, innYear %in% datoVec)
+
 
 ########### utvalgt norge data innen spesifiserte tidsrommet
-norData <- nbReg::nbText(data = RegData)
-dataNorge <- norData$data
+## norData <- nbReg::nbText(data = RegData)
+## dataNorge <- norData$data
+dataNorge <- dplyr::filter(RegData, innYear %in% datoVec)
 
 #############################
 sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
-tidRom <- rappData$figTxt[[4]]
+tidRom <- txtData$figTxt[[4]]
 
 year <- as.integer(format(as.Date(DatoTil), "%Y"))
 lastyr <- as.numeric(year - 1)
@@ -176,7 +176,7 @@ lastyr <- as.numeric(year - 1)
 \noindent\hfill Dato: \Sexpr{format(Sys.Date(), "%Y.%m.%d")}
 
 \begin{center}
-\textbf{\huge Kvartalsrapport for \Sexpr{sykNavn}}\linebreak
+\textbf{\huge Rapport for \Sexpr{sykNavn}}\linebreak
 \textbf{\Sexpr{tidRom}}
 \end{center}
 \vspace*{-15mm}
@@ -186,11 +186,7 @@ lastyr <- as.numeric(year - 1)
 \end{center}
 
 \section*{Antall førstegangsregistreringer og årskontroll}
-<<<<<<< HEAD
-\label{sec:orgbd1f6c4}
-=======
-\label{sec:orgd32d2d7}
->>>>>>> fig2
+\label{sec:org5aaca3e}
 \vspace{5mm}
 Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 \Sexpr{year}. Estimert andel årskontroller (\%) er basert på totalt antall innleverte
@@ -205,25 +201,38 @@ sykYear <- Data %>%
     summarise(
         count = n())
 
+## sykYear <- Data %>%
+##     select(Year, regValg, AlderKat3) %>%  #inn_Type == regValg
+##     filter(Year >=lastyr, regValg !=3) %>%
+##     group_by(regValg, Year, AlderKat3) %>%
+##     tally
+
 ## Total for Årskontroll og Førstegang
 sykYear01 <- sykYear %>%
     group_by(inn_Type, Year) %>%
     mutate(Totalt2 = sum(count),
     dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
 
+## sykYear01 <- sykYear %>%
+##     group_by(regValg, Year) %>%
+##     mutate(Totalt2 = sum(n),
+##            innType = factor(regValg, levels = c(1,2),
+##                          labels = c("Førstegangsregistrering", "Årskontroll")))
+
+
 sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
 tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
 tblYearAndel <- tblYear[2,]
 
 ## Tabell for antall
-tbl01 <- filter(tblYear, Year==year)
+tbl00 <- filter(tblYear, Year==year)
 buang <- c("Year", "dumm")
-tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
+tbl01 <- tbl00[,!(names(tbl00) %in% buang)]
 
 ## Estimerte andel motatte årskontroller tabell
 
-## for alderkat året og fjoråret - bruk hele datasettet
-sykYearLyr <- RegData %>%
+## for alderkat året og fjoråret - for lokal
+sykYearLyr <- RegDataLokal %>%
     select(Year, inn_Type, AlderKat3) %>%
     filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
     group_by(inn_Type, Year, AlderKat3) %>%
@@ -260,11 +269,7 @@ print(xtable(tblFinal, digits=0),include.rownames=F)
 @ %def
 
 \section*{Andelingen HbA1c mot landsgjennomsnittet}
-<<<<<<< HEAD
-\label{sec:orga304cb7}
-=======
-\label{sec:org1e86118}
->>>>>>> fig2
+\label{sec:org6ab3df7}
 
 <<Plot2,echo=FALSE, message=FALSE, warning=FALSE, fig.height=6.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 ## Bruk nbReg pakke
@@ -430,11 +435,7 @@ mmplot(gg.Alle, gg.tab2)
 \pagebreak
 
 \section*{Avdelingens kompletthet av data}
-<<<<<<< HEAD
-\label{sec:org2737d9c}
-=======
-\label{sec:org180889c}
->>>>>>> fig2
+\label{sec:org145b82b}
 \vspace{5mm}
 <<Plot3,echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 ## white space og NA
@@ -502,11 +503,7 @@ grid.draw(ggkomplett2)
 @ %def
 
 \section*{Avdelingens akutte kompliksjoner}
-<<<<<<< HEAD
-\label{sec:org688b00a}
-=======
-\label{sec:orgd3a4912}
->>>>>>> fig2
+\label{sec:org91f2772}
 \vspace{5mm}
 <<Plot4,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 dka <- Data[Data$lab_BiKarbonat < 15.00 | Data$lab_pH < 7.30,]
@@ -548,11 +545,7 @@ grid.draw(gg.kompT)
 @ %def
 
 \section*{Behandling ved avdelingen}
-<<<<<<< HEAD
-\label{sec:orgdb71290}
-=======
-\label{sec:org6e535f5}
->>>>>>> fig2
+\label{sec:org7e7f2d2}
 
 <<Plot5,echo=FALSE, message=FALSE, warning=FALSE, fig.height=2.5, fig.align='center', dev='pdf', fig.path="graphics/bdr">>=
 trimJa <- function(x) {
