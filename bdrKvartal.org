@@ -73,6 +73,8 @@
   DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
 
   ColPoint <- "#FF3333"
+  cols <- c("#99CCFF", "#0066CC", "#003366") #farge for flere bar
+  colb <- "#99CCFF" #farge for en søyle
   options(digits = 3)
 
   ## hbaAIc Mean
@@ -192,18 +194,18 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
 #+ATTR_RAVEL: echo=FALSE, results="asis", message=FALSE, warning=FALSE
 #+BEGIN_SRC R
   ## Lokal sykehus data eksludert poliklinisk
-  sykYear <- Data %>%
-      select(Year, inn_Type, AlderKat3) %>%
-      filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
-      group_by(inn_Type, Year, AlderKat3) %>%
-      summarise(
-          count = n())
-
   ## sykYear <- Data %>%
-  ##     select(Year, regValg, AlderKat3) %>%  #inn_Type == regValg
-  ##     filter(Year >=lastyr, regValg !=3) %>%
-  ##     group_by(regValg, Year, AlderKat3) %>%
-  ##     tally
+  ##     select(Year, inn_Type, AlderKat3) %>%
+  ##     filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
+  ##     group_by(inn_Type, Year, AlderKat3) %>%
+  ##     summarise(
+  ##         count = n())
+
+  sykYear <- Data %>%
+      select(Year, inn_Type, regValg, AlderKat3) %>%  #inn_Type == regValg
+      filter(Year >=lastyr, regValg %in% 1:2) %>%
+      group_by(inn_Type, Year, AlderKat3) %>%
+      summarise(count = n())
 
   ## Total for Årskontroll og Førstegang
   sykYear01 <- sykYear %>%
@@ -361,7 +363,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## Definere min/maks for y-aksen og farge
   ymin <- 5
   ymax <- max(hbaAlle$Mean, na.rm=TRUE) + 1
-  cols <- c("#99CCFF", "#0066CC", "#003366")
+
 
   ## konvertere Mean til numeric
   hbaLokal <- transform(hbaLokal, Mean = as.numeric(Mean))
@@ -390,7 +392,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
             legend.title = element_blank(),
             legend.text = element_text(size = 10),
             panel.border = element_blank(),
-            panel.grid.major.y = element_line(colour = "black", size = 0.2),
+            panel.grid.major.y = element_line(colour = "grey", size = 0.2),
             panel.grid.minor.y = element_line(color = "grey", size = 0.2, linetype = 2),
             panel.grid.major.x = element_blank(),
             axis.text = element_text(size = 10),
@@ -480,7 +482,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## komp2$navn <- rownames(komp2) #create col with navn
 
   ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) +
-      geom_bar(stat="identity", fill =  "#0066CC") +
+      geom_bar(stat="identity", fill = colb) +
       coord_flip() +
       labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
       geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
@@ -525,7 +527,7 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   komTable <- data.frame(komNavn, komData)
 
   gg.komp <- ggplot(komTable, aes(x = komNavn, y = komData)) +
-      geom_bar(stat = "identity", fill = "#0066CC") +
+      geom_bar(stat = "identity", fill = colb) +
       coord_flip() +
       labs(y = "Antall", x = "") +
       geom_text(aes(y = komData + 0.03, label = komData), hjust= -0.1, color="black", size = 3) +
@@ -589,12 +591,14 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   ## Figur
 
   gg.fig4 <- ggplot(NULL, aes(x = navn, y = Andel)) +
-      geom_bar(data = behLokalp, stat = "identity", fill = "#0066CC") +
-  geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
+      geom_bar(data = behLokalp, stat = "identity", fill = colb) +
+      geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
+      geom_text(data = behLokalp, aes(y = sykValg+3, label = paste0(Andel, "%")), size = 3) +
       labs(x = "", y = "Andel (%)") +
       theme_bw() +
       scale_color_manual(values = ColPoint) +
       scale_y_continuous(expand = c(0,0)) +
+      ylim(NA, 100) +
       coord_flip() +
       theme(
           legend.position = "top",
@@ -606,7 +610,8 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.y = element_blank(),
-          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          panel.grid.major.x = element_line(colour = "grey", size = 0.2),
+          panel.grid.minor.x = element_line(colour = "grey", size = 0.2, linetype = 2),
           axis.ticks.y = element_blank(),
           axis.line.x = element_line(size = 0.5),
           axis.title.y = element_text(size = 9),
