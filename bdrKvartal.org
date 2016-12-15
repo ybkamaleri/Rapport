@@ -72,7 +72,7 @@
   Kjonn  = 3  		# 1:gutt 2:jente 3:alle
   DataValg = 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
 
-  ColPoint <- "#FF3333"
+  ColPoint <- "#FF3333" #farge for point
   cols <- c("#99CCFF", "#0066CC", "#003366") #farge for flere bar
   colb <- "#99CCFF" #farge for en søyle
   options(digits = 3)
@@ -462,7 +462,10 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
   Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-  komplett <- dplyr::select(Data, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
+  arsData <- Data %>%
+      dplyr::filter(regValg == 2)
+  komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
+
   N <- dim(komplett)[1]
 
   tblFun <- function(x){
@@ -589,16 +592,15 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
   behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
 
   ## Figur
-
   gg.fig4 <- ggplot(NULL, aes(x = navn, y = Andel)) +
       geom_bar(data = behLokalp, stat = "identity", fill = colb) +
       geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
-      geom_text(data = behLokalp, aes(y = sykValg+3, label = paste0(Andel, "%")), size = 3) +
+      geom_text(data = behLokalp, aes(y = sykValg+2.5, label = paste0(Andel, "%")), size = 3) +
       labs(x = "", y = "Andel (%)") +
-      theme_bw() +
+      ## theme_bw() +
       scale_color_manual(values = ColPoint) +
-      scale_y_continuous(expand = c(0,0)) +
-      ylim(NA, 100) +
+      scale_y_continuous(limits = c(0,100), breaks = seq(0,100,10), expand = c(0,0)) +
+      ## ylim(NA, 100) +
       coord_flip() +
       theme(
           legend.position = "top",
@@ -610,8 +612,8 @@ Antall førstegangsregistreringer og årskontroller tatt i avdelingen i
           panel.background = element_blank(),
           panel.border = element_blank(),
           panel.grid.major.y = element_blank(),
-          panel.grid.major.x = element_line(colour = "grey", size = 0.2),
-          panel.grid.minor.x = element_line(colour = "grey", size = 0.2, linetype = 2),
+          panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+          ## panel.grid.minor.x = element_line(colour = "grey", size = 0.2, linetype = 2),
           axis.ticks.y = element_blank(),
           axis.line.x = element_line(size = 0.5),
           axis.title.y = element_text(size = 9),
