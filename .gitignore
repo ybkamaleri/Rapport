@@ -1,6 +1,5 @@
 #----
 *.pdf
-*.Rmd
 *.log
 *.out
 *.aux
