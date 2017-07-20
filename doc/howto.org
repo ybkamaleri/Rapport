@@ -1,0 +1,31 @@
+
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:nil
+#+OPTIONS: broken-links:nil c:nil creator:nil d:(not "LOGBOOK") date:t e:t email:nil
+#+OPTIONS: f:t inline:t num:nil p:nil pri:nil prop:nil stat:t tags:nil tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:nil todo:t |:t
+#+Title: Åpne Rmd fil i riktig enkoding format
+#+Date: 19 juli 2017
+#+AUTHOR: Yusman Kamaleri
+#+EMAIL: ybkamaleri@gmail.com
+#+LANGUAGE: no
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.1 (Org mode 9.0.9)
+
+
+* Kode                                                             :noexport:
+insert image
+#+BEGIN_SRC emacs-lisp
+  (setq org-display-inline-images t)
+#+END_SRC
+
+
+* UTF-8                                                              :export:
+Valg fil som skal åpnes i ~RStudio~. Når filen er åpen, så skal den re-åpnes med riktig
+enkoding format for at norske bokstaver skal leses riktig.  \\
+
+For å gjøre det, valg =File= og så =Reopen with Encoding=. Deretter valg =UTF-8=. Bilder nedenfor viser disse
+
+#+ATTR_ORG: :width 100
+#+ATTR_LATEX: :width 15cm
+[[./utf8v2.png]]
