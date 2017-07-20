@@ -3,10 +3,11 @@ rm(list = ls())
 
 ##=======KONTROLL==============##
 
-setwd("~/Git-work/bdr_rap/data")
-filnavn <- "avid.RDS"
+## setwd("~/OUS/BDR-test/data")
+## filnavn <- "avid.RDS"
+## RegData <- read.csv(filnavn, sep = ";", stringsAsFactors = FALSE, fileEncoding = "latin1")
 
-RegData <- readRDS(filnavn)
+RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
 Sykehus <- 1
 
@@ -107,6 +108,12 @@ alder.kat2 <- function(x, lower, upper, by,
       include.lowest = TRUE, right = FALSE, labels = labs)
 }
 
+tblFun <- function(x){
+  tbl <- table(x)
+  res <- cbind(tbl,round(prop.table(tbl)*100,1))
+  colnames(res) <- c('Antall','Andel')
+  res
+}
 
 #########################
 ## Rensing og omkoding
@@ -271,8 +278,75 @@ knitr::kable(tblFinal, digits = 0)
 
 ```
 
-</b>
+<br><br>
 
+## Behandling ved avdelingen
+
+```{r plot4, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.height=3}
+trimJa <- function(x) {
+    x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+    x <- ifelse(x!="Ja", 0, 1)
+    return(x)
+}
+
+behNavn <- c("Penn", "Pumpe", "CGM")
+
+## Lokal
+behData <- dplyr::select(Data, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+behLokal <- as.data.frame(lapply(behData[,], trimJa))
+
+behLokalp <- do.call(rbind, lapply(behLokal, tblFun))
+maxBehL <- dim(behLokalp)[1]
+behLokalp <- behLokalp[seq(0,maxBehL,2),]
+behLokalp <- data.frame(behLokalp, row.names=behNavn)
+behLokalp <- tibble::rownames_to_column(behLokalp, "navn") #convert row.names
+behLokalp <- dplyr::mutate(behLokalp, sykValg = 1) #lokal
+
+
+## Norge
+behNorge <- dplyr::select(dataNorge, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
+behAlle <- as.data.frame(lapply(behNorge[,], trimJa))
+
+behAllep <- do.call(rbind, lapply(behAlle, tblFun))
+maxBehA <- dim(behAllep)[1]
+behAllep <- behAllep[seq(0,maxBehA,2),]
+behAllep <- data.frame(behAllep, row.names=behNavn)
+behAllep <- tibble::rownames_to_column(behAllep, "navn") #convert row.names
+behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
+
+## Figur
+gg.fig4 <- ggplot(NULL, aes(x = navn, y = Andel)) +
+    geom_bar(data = behLokalp, stat = "identity", fill = colb) +
+    geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
+    geom_text(data = behLokalp, aes(y = sykValg+2.5, label = paste0(Andel, "%")), size = 3) +
+    labs(x = "", y = "Andel (%)") +
+    ## theme_bw() +
+    scale_color_manual(values = ColPoint) +
+    scale_y_continuous(limits = c(0,100), breaks = seq(0,100,10), expand = c(0,0)) +
+    ## ylim(NA, 100) +
+    coord_flip() +
+    theme(
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.key = element_rect(color = "white"),
+        axis.text.y = element_text(color = "black", size = 9),
+        plot.margin = unit(c(0,0.5,0,0), "cm"),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
+        ## panel.grid.minor.x = element_line(colour = "grey", size = 0.2, linetype = 2),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_line(size = 0.5),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+
+gg.fig4T <- ggplot_gtable(ggplot_build(gg.fig4))
+gg.fig4T$layout$clip[gg.fig4T$layout$name == "panel"] <- "off"
+grid.draw(gg.fig4T)
+```
+\pagebreak
 
 ## Andelingen HbA1c mot landsgjennomsnittet
 
@@ -468,14 +542,7 @@ komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infi
 
 N <- dim(komplett)[1]
 
-tblFun <- function(x){
-    tbl <- table(x)
-    res <- cbind(tbl,round(prop.table(tbl)*100,1))
-    colnames(res) <- c('Antall','Andel')
-    res
-}
-
-navn <- c("HbA1c", "Insulinsjokk", "DKA", "?ye us.", "Infiltrater", "TSH", "C?liaki", "Fysisk aktivitetet",
+navn <- c("HbA1c", "Insulinsjokk", "DKA", "Øye us.", "Infiltrater", "TSH", "Cøliaki", "Fysisk aktivitetet",
           "LDL", "Urin us.")
 komp1 <- do.call(rbind, lapply(komplett, tblFun))
 maxkomp <- dim(komp1)[1]
@@ -519,14 +586,14 @@ grid.draw(ggkomplett2)
 dka <- Data[Data$lab_BiKarbonat < 15.00 | Data$lab_pH < 7.30,]
 
 dka1 <- dka %>%
-    filter(grepl("F?rstegangsregistrering", inn_Type))
+  filter(grepl("Førstegangsregistrering", inn_Type))
 dkaSum <- dim(dka1)[1]
 keto <- ifelse(is.na(Data$und_ketoacidose_ant), 0, Data$und_ketoacidose_ant)
 ketoSum <- sum(keto)
 innssj <- ifelse(is.na(Data$und_inssjokk_ant), 0, Data$und_inssjokk_ant)
 innssjSum <- sum(innssj)
 
-komNavn <- c("DKA ved\n f?rstegangsregistrering", "Ketoacidose", "Insulinsjokk")
+komNavn <- c("DKA ved\n førstegangsregistrering", "Ketoacidose", "Insulinsjokk")
 komData <-c(dkaSum, ketoSum, innssjSum)
 komTable <- data.frame(komNavn, komData)
 
@@ -553,72 +620,3 @@ gg.kompT <- ggplot_gtable(ggplot_build(gg.komp))
 gg.kompT$layout$clip[gg.kompT$layout$name == "panel"] <- "off"
 grid.draw(gg.kompT)
 ```
-<br><br>
-
-## Behandling ved avdelingen
-
-```{r plot4, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.height=3}
-trimJa <- function(x) {
-    x <- gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
-    x <- ifelse(x!="Ja", 0, 1)
-    return(x)
-}
-
-behNavn <- c("Penn", "Pumpe", "CGM")
-
-## Lokal
-behData <- dplyr::select(Data, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
-behLokal <- as.data.frame(lapply(behData[,], trimJa))
-
-behLokalp <- do.call(rbind, lapply(behLokal, tblFun))
-maxBehL <- dim(behLokalp)[1]
-behLokalp <- behLokalp[seq(0,maxBehL,2),]
-behLokalp <- data.frame(behLokalp, row.names=behNavn)
-behLokalp <- tibble::rownames_to_column(behLokalp, "navn") #convert row.names
-behLokalp <- dplyr::mutate(behLokalp, sykValg = 1) #lokal
-
-
-## Norge
-behNorge <- dplyr::select(dataNorge, Penn = beh_penn_sproyte, Pumpe = beh_ins_pumpe, CGM = beh_ins_kont_blodsukker_reg)
-behAlle <- as.data.frame(lapply(behNorge[,], trimJa))
-
-behAllep <- do.call(rbind, lapply(behAlle, tblFun))
-maxBehA <- dim(behAllep)[1]
-behAllep <- behAllep[seq(0,maxBehA,2),]
-behAllep <- data.frame(behAllep, row.names=behNavn)
-behAllep <- tibble::rownames_to_column(behAllep, "navn") #convert row.names
-behAllep <- dplyr::mutate(behAllep, sykValg = 2) #alle
-
-## Figur
-gg.fig4 <- ggplot(NULL, aes(x = navn, y = Andel)) +
-    geom_bar(data = behLokalp, stat = "identity", fill = colb) +
-    geom_point(data = behAllep, aes(colour = "Landsgjennomsnitt"), stat = "identity", shape = 18, size = 5) +
-    geom_text(data = behLokalp, aes(y = sykValg+2.5, label = paste0(Andel, "%")), size = 3) +
-    labs(x = "", y = "Andel (%)") +
-    ## theme_bw() +
-    scale_color_manual(values = ColPoint) +
-    scale_y_continuous(limits = c(0,100), breaks = seq(0,100,10), expand = c(0,0)) +
-    ## ylim(NA, 100) +
-    coord_flip() +
-    theme(
-        legend.position = "top",
-        legend.title = element_blank(),
-        legend.text = element_text(size = 10),
-        legend.key = element_rect(color = "white"),
-        axis.text.y = element_text(color = "black", size = 9),
-        plot.margin = unit(c(0,0.5,0,0), "cm"),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.major.x = element_line(colour = "grey", size = 0.4, linetype = 2),
-        ## panel.grid.minor.x = element_line(colour = "grey", size = 0.2, linetype = 2),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_line(size = 0.5),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
-
-gg.fig4T <- ggplot_gtable(ggplot_build(gg.fig4))
-gg.fig4T$layout$clip[gg.fig4T$layout$name == "panel"] <- "off"
-grid.draw(gg.fig4T)
-```
-
