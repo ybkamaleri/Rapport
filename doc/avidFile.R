@@ -1,8 +1,8 @@
-## Tar bort variabler for avidentifisering
+## Tar bort variabler for avidentifiseringx
 
 bort <- c("FNr", "ENavn", "MNavn", "FNavn", "PostNr", "PostSted", "Addresse", "Mors", "Nasjonalitet", "FodeLand", "Adoptert", "AdoptertFra", "ForeldreAdoptert",
           "ForeldreAdoptertFra", "nasMor", "nasFar", "nasMormor", "nasMorfar", "nasFarmor", "nasFarfar", "fodelandMor", "fodelandFar", "fodelandMormor",
-  "fodelandMorfar", "fodelandFarmor", "fodelandFarfar")
+          "fodelandMorfar", "fodelandFarmor", "fodelandFarfar", "inn_pas_PostNr", "inn_pas_Adresse", "inn_pass_PostSted")
 
 ## Lage CSV fil ved å velge "CSV (Semikolondelt)" i Excel
 data <- read.csv("K:/Sensitivt/Klinikk01/BDR_eReg/Rapport/Kvartalsrapport/Data/DataDumpSemikol.csv",
