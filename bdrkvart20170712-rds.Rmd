@@ -57,25 +57,10 @@ cols <- c("#99CCFF", "#0066CC", "#003366") #farge for flere bar
 colb <- "#99CCFF" #farge for en søyle
 options(digits = 3)
 
-inspak <- function(pkg){
-  nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(nypkg))
-    install.packages(nypkg, dependencies = TRUE)
 
-}
-
-pakke <- c("nbReg", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
-inspak(pakke)
-
-## Upload libraries
-library(nbReg)
-library(dplyr)
-library(ggplot2)
-library(knitr)
-library(grid)
-library(tidyr)
-library(xtable)
-
+#############
+## DPLYR
+############
 
 ## hbaAIc Mean
 sumMean <- function(data, maalvar, filvar, gpvars) {

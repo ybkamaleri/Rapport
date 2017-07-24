@@ -7,7 +7,6 @@ rm(list = ls())
 
 RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
-
 RegData$test[grepl("registrering", RegData$inn_Type)] <- 1
 RegData$test[grepl("rskontroll", RegData$inn_Type)] <- 2
 
