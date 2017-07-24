@@ -3,11 +3,36 @@ rm(list = ls())
 
 ##=======KONTROLL==============##
 
+inspak <- function(pkg){
+  nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(nypkg))
+    install.packages(nypkg, dependencies = TRUE)
+
+}
+
+pakke <- c("nbReg", "data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+inspak(pakke)
+
+## Upload libraries
+library(nbReg)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(grid)
+library(tidyr)
+library(xtable)
+library(data.table)
+
 ## setwd("~/OUS/BDR-test/data")
 ## filnavn <- "avid.RDS"
 ## RegData <- read.csv(filnavn, sep = ";", stringsAsFactors = FALSE, fileEncoding = "latin1")
+## RegData <- fread("File.csv")
 
 RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
+
+## RegData <- as.data.table(RegData)
+
+
 
 Sykehus <- 1
 
