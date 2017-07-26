@@ -33,8 +33,10 @@ RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
 Sykehus <- 1
 
-DatoFra <- "2014-01-01" # YYYY-MM-DD
-DatoTil <- "2017-12-31" # YYYY-MM-DD
+## Det skal være samme år, bergningen hånterer ikke to forskjellig år
+## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
+DatoFra <- "2015-01-01" # YYYY-MM-DD
+DatoTil <- "2015-12-31" # YYYY-MM-DD
 
 ##============================##
 
@@ -117,7 +119,7 @@ alder.kat2 <- function(x, lower, upper, by,
 
 tblFun <- function(x){
   tbl <- table(x)
-  res <- cbind(tbl,round(prop.table(tbl)*100,1))
+  res <- cbind(tbl,round(prop.table(tbl)*100,1)) #1 digit decimal
   colnames(res) <- c('Antall','Andel')
   res
 }
@@ -201,9 +203,13 @@ RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
 ##lokal og andre
 RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
 
-## Del datasettet - CHECK!
+## Del datasettet - CHECK! Unnødvending
+## Finne løsning for fjoråret data til prosent telling
 RegDataLokal <- RegData[sykValg == 1, ]
 RegDataAndre <- RegData[sykValg == 2, ]
+
+## Utvalgt data fra dato - ubrukte datasettet
+## dataValg <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
 Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
@@ -212,7 +218,7 @@ Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoT
 ## Data <- rappData$data
 
 ########### utvalgt norge data innen spesifiserte tidsrommet
-dataNorge <- RegData[innYear %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+dataNorge <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 ## norData <- nbReg::nbText(data = RegData)
 ## dataNorge <- norData$data
 
@@ -243,8 +249,8 @@ Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i `r lastyr`
 
 ```{r fig1, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
-## Lokal sykehus data eksludert annen enn årskontroll og førstegangsregistrering
 
+## Lokal sykehus data eksludert annen enn årskontroll og førstegangsregistrering
 sykYear <- Data %>%
   select(Year, inn_Type, regValg, AlderKat3) %>%
   filter(Year >= lastyr, regValg != 9) %>%
@@ -269,8 +275,8 @@ tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
 
 ## Estimerte andel motatte årskontroller tabell
 
-## for alderkat året og fjoråret - bruk hele datasettet
-sykYearLyr <- RegData %>%
+## for alderkat året og fjoråret - bruk bare lokal
+sykYearLyr <- RegDataLokal %>%
   select(Year, inn_Type, AlderKat3) %>%
   filter(Year %in% lastyr:year, grepl(c("rskontroll"), inn_Type)) %>%
   group_by(inn_Type, Year, AlderKat3) %>%
