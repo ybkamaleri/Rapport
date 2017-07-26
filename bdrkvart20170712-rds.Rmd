@@ -239,7 +239,7 @@ title: Rapport for `r sykNavn`
 date: `r format(Sys.Date(), "%d %b. %Y")`
 ---
 
-Periode:`r tidRom`
+Periode: `r tidRom`
 
 
 ## Antall førstegangsregistreringer og årskontroll
@@ -307,6 +307,7 @@ kill <- c("Totalt2", "dumm")
 tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
 tblFinal <- as.data.frame(tblFinal)
 tblFinal[is.na(tblFinal)] <- 0
+names(tblFinal)[1] <- " "
 
 ## print(xtable(tblFinal, digits=0),include.rownames=F)
 knitr::kable(tblFinal, digits = 0)
