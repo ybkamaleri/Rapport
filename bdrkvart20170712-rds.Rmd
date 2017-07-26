@@ -1,4 +1,4 @@
-```{r file, echo=FALSE, warning=FALSE, message=FALSE}
+```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
 
 ##=======KONTROLL==============##
@@ -10,11 +10,10 @@ inspak <- function(pkg){
 
 }
 
-pakke <- c("nbReg", "data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+pakke <- c("data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
 inspak(pakke)
 
 ## Upload libraries
-library(nbReg)
 library(dplyr)
 library(ggplot2)
 library(knitr)
@@ -32,11 +31,9 @@ RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
 ## RegData <- as.data.table(RegData)
 
-
-
 Sykehus <- 1
 
-DatoFra <- "2016-01-01" # YYYY-MM-DD
+DatoFra <- "2014-01-01" # YYYY-MM-DD
 DatoTil <- "2017-12-31" # YYYY-MM-DD
 
 ##============================##
@@ -129,34 +126,50 @@ tblFun <- function(x){
 ## Rensing og omkoding
 ########################
 
-## white space
-trim <- function( x ) {
-  gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+### variabler brukes
+varBDR <- c(
+  "inn_Type",
+  "Kjonn", 
+  "Sykehus",
+  "lab_HbA1cAkerVerdi",
+  "inn_Dato",
+  "inn_DiagDato"
+)
+
+sykNavn <- c(
+  "Ullevål universitetssykehus",
+  "Haugesund sjukehus",
+  "Sykehuset i Vestfold, Tønsberg"
+)
+
+
+## Convertere data til DT format
+RegData <- setDT(RegData)
+
+## Whitespace
+for (j in names(RegData)) set(RegData, j = j, value = RegData[[trimws(j)]])
+
+## Omkoding
+omkode <- function(ord, var, new, tall) {
+  RegData[grepl(ord, get(var)), paste0(new) := tall]
 }
 
 ## Inn_Type = regValg
-RegData$ValgtData2 <- trim(RegData$inn_Type)
-## RegData$ValgtData <- gsub(" $", "", RegData$inn_Type, perl = T)
-RegData$regValg[RegData$ValgtData2=="Førstegangsregistrering"] <- 1
-RegData$regValg[RegData$ValgtData2=="Årskontroll"] <- 2
-RegData$regValg[RegData$ValgtData2=="Poliklinisk kontroll"] <- 3
-RegData$regValg[RegData$ValgtData2 == "Overflytting"] <- 4
-RegData$regValg <- as.factor(RegData$regValg)
+omkode("rstegangsreg", "inn_Type", "regValg", 1L) # Førstegangsregistrering
+omkode("rskontroll", "inn_Type", "regValg", 2L)   # Årskontroll
+RegData[!(regValg %in% 1:2), regValg := .(9L)]    # Alt annet
 
 ## SykehusNavn , SykehusKode
-RegData$SykehusNavn <- trim(RegData$Sykehus)
-RegData$SykehusKode <- NA
-RegData$SykehusKode[RegData$SykehusNavn=="Ullevål universitetssykehus"] <- 1
-RegData$SykehusKode[RegData$SykehusNavn=="Haugesund sjukehus"] <- 2
-RegData$SykehusKode[RegData$SykehusNavn=="Sykehuset i Vestfold, Tønsberg"] <- 3
-RegData$SykehusKode[RegData$SykehusNavn=="Nordlandssykehuset HF avd Bodø, somatikk"] <- 4
-RegData$SykehusKode[RegData$SykehusNavn=="St. Olavs Hospital"] <- 5
-RegData$SykehusKode[RegData$SykehusNavn=="Ålesund sjukehus"] <- 6
-RegData$SykehusKode[RegData$SykehusNavn=="Sykehuset Levanger"] <- 7
-RegData$SykehusKode <- factor(RegData$SykehusKode)
+omkode("Ullev", "Sykehus", "SykehusKode", 1L) # Ullevål
+omkode("Haugesund", "Sykehus", "SykehusKode", 2L) # Haugesund
+omkode("Vestfold", "Sykehus", "SykehusKode", 3L) # S.Vestfold, Tønsberg
+omkode("Nordlandssyk", "Sykehus", "SykehusKode", 4L) # Nordlandssykehuset
+omkode("Olavs", "Sykehus", "SykehusKode", 5L) # St. Olavs
+omkode("lesund", "Sykehus", "SykehusKode", 6L) # Ålesund
+omkode("Levanger", "Sykehus", "SykehusKode", 7L) # Levanger
 
 ## lab_HbA1cAkerVerdi = hba
-RegData$hba <- as.numeric(trim(RegData$lab_HbA1cAkerVerdi))
+RegData[, hba := lab_HbA1cAkerVerdi]
 
 ## År
 ## RegData$Year <- as.numeric(format(as.POSIXct(RegData$inn_Dato, format = "%Y-%m-%d %H:%M"), "%Y"))
@@ -169,20 +182,18 @@ RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units =
 RegData$diaVarighet <- as.numeric(RegData$diaVarighet)
 
 ## Kjønn = kjonn
-RegData$kjonn1 <- as.factor(trim(RegData$Kjonn))
-RegData$kjonn <- NA
-RegData$kjonn[RegData$kjonn1=="Gutt"] <- 1
-RegData$kjonn[RegData$kjonn1=="Jente"] <- 2
-RegData$kjonn <- factor(RegData$kjonn)
+omkode("Gutt", "Kjonn", "kjonn", 1L)
+omkode("Jente", "Kjonn", "kjonn", 2L)
 
-## Diabetes Type 1
-RegData$diabetes_Type1<- trim(RegData$diabetes_Type1)
-RegData$diaType1 <- ifelse(RegData$diabetes_Type1 == "Ja", 1, 2) #1:Type1 2:AndreType
+## Diabetes 1:Type 1 og 2:AndreType
+## system.time(RegData$diaType1 <- ifelse(RegData$diabetes_Type1 == "Ja", 1, 2)) #1:Type1 2:AndreType
+RegData[grepl("Ja", diabetes_Type1), diaType1 := list(1L)][is.na(diaType1), diaType1 := .(2)]
 
-## Alder
+############
+############ Skal det være mot dagens dato eller inn_Dato??
+## Alder 
 RegData$FDato1 <- as.POSIXct(RegData$FDato, origin = "1899-12-30 0:00:00")
 RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365))
-
 
 ## Kategorisert Alder til max 15+
 RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
@@ -190,20 +201,27 @@ RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
 ##lokal og andre
 RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
 
-RegDataLokal <- dplyr::filter(RegData, sykValg == 1) #lokal sykehus
-RegDataAndre <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
+## Del datasettet - CHECK!
+RegDataLokal <- RegData[sykValg == 1, ]
+RegDataAndre <- RegData[sykValg == 2, ]
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
-rappData <- nbReg::nbText(data = RegDataLokal)
-Data <- rappData$data
+Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+
+## rappData <- nbReg::nbText(data = RegDataLokal)
+## Data <- rappData$data
 
 ########### utvalgt norge data innen spesifiserte tidsrommet
-norData <- nbReg::nbText(data = RegData)
-dataNorge <- norData$data
+dataNorge <- RegData[innYear %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+## norData <- nbReg::nbText(data = RegData)
+## dataNorge <- norData$data
 
 #############################
-sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
-tidRom <- rappData$figTxt[[4]]
+sykNavn <- Data$Sykehus[Data$SykehusKode == Sykehus][1]
+## tidRom <- rappData$figTxt[[4]]
+DatoFra1 <- format(as.POSIXct(DatoFra, format = "%Y-%m-%d"), "%d/%m/%Y")
+DatoTil1 <- format(as.POSIXct(DatoTil, format = "%Y-%m-%d"), "%d/%m/%Y")
+tidRom <- paste(DatoFra1, DatoTil1, sep = " - ")
 
 year <- as.integer(format(as.Date(DatoTil), "%Y"))
 lastyr <- as.numeric(year - 1)
@@ -215,7 +233,7 @@ title: Rapport for `r sykNavn`
 date: `r format(Sys.Date(), "%d %b. %Y")`
 ---
 
-`r tidRom`
+Periode:`r tidRom`
 
 
 ## Antall førstegangsregistreringer og årskontroll
@@ -225,10 +243,11 @@ Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i `r lastyr`
 
 ```{r fig1, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
-## Lokal sykehus data eksludert poliklinisk
+## Lokal sykehus data eksludert annen enn årskontroll og førstegangsregistrering
+
 sykYear <- Data %>%
-  select(Year, inn_Type, AlderKat3) %>%
-  filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
+  select(Year, inn_Type, regValg, AlderKat3) %>%
+  filter(Year >= lastyr, regValg != 9) %>%
   group_by(inn_Type, Year, AlderKat3) %>%
   summarise(
     count = n())
@@ -237,7 +256,7 @@ sykYear <- Data %>%
 sykYear01 <- sykYear %>%
   group_by(inn_Type, Year) %>%
   mutate(Totalt2 = sum(count),
-         dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
+         dumm = ifelse(grepl("rskontroll", inn_Type), 2, 1))
 
 sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
 tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
@@ -253,7 +272,7 @@ tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
 ## for alderkat året og fjoråret - bruk hele datasettet
 sykYearLyr <- RegData %>%
   select(Year, inn_Type, AlderKat3) %>%
-  filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
+  filter(Year %in% lastyr:year, grepl(c("rskontroll"), inn_Type)) %>%
   group_by(inn_Type, Year, AlderKat3) %>%
   summarise(
     count = n())
