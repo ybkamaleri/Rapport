@@ -180,7 +180,7 @@ RegData$innYear <- as.Date(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d
 RegData$diagYear <- as.Date(format(as.POSIXct(RegData$inn_DiagDato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))
 
 ## Diabetes varighet
-RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365)
+RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365.25)
 RegData$diaVarighet <- as.numeric(RegData$diaVarighet)
 
 ## Kjønn = kjonn
@@ -195,7 +195,7 @@ RegData[grepl("Ja", diabetes_Type1), diaType1 := list(1L)][is.na(diaType1), diaT
 ############ Skal det være mot dagens dato eller inn_Dato??
 ## Alder 
 RegData$FDato1 <- as.POSIXct(RegData$FDato, origin = "1899-12-30 0:00:00")
-RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365))
+RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365.25))
 
 ## Kategorisert Alder til max 15+
 RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
