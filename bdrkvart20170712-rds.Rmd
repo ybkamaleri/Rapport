@@ -31,7 +31,7 @@ RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
 ## RegData <- as.data.table(RegData)
 
-Sykehus <- 2
+Sykehus <- 7
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
