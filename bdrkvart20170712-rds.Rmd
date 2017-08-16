@@ -1,5 +1,12 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
 ```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
+RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
 
 ##=======KONTROLL==============##
 
@@ -27,11 +34,11 @@ library(data.table)
 ## RegData <- read.csv(filnavn, sep = ";", stringsAsFactors = FALSE, fileEncoding = "latin1")
 ## RegData <- fread("File.csv")
 
-RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
+
 
 ## RegData <- as.data.table(RegData)
 
-Sykehus <- 7
+Sykehus <- 1
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
