@@ -17,7 +17,7 @@ inspak <- function(pkg){
 
 }
 
-pakke <- c("data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+pakke <- c("data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr")
 inspak(pakke)
 
 ## Upload libraries
@@ -26,7 +26,6 @@ library(ggplot2)
 library(knitr)
 library(grid)
 library(tidyr)
-library(xtable)
 library(data.table)
 
 ## setwd("~/OUS/BDR-test/data")
@@ -386,7 +385,7 @@ grid.draw(gg.fig4T)
 ```
 \pagebreak
 
-## Andelingen HbA1c mot landsgjennomsnittet
+## Avdelingens HbA1c mot landsgjennomsnittet
 
 ```{r plot1, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7, fig.align= 'center'}
 ## Bruk nbReg pakke
@@ -563,6 +562,7 @@ trimNJ <- function(x) {
     return(x)
 }
 
+setDT(Data)
 Data$hba1c <- as.factor(trimNJ(Data$lab_HbA1cAkerVerdi))
 Data$insulinsjokk <- as.factor(trimNJ(Data$und_inssjokk))
 Data$ketoacidose <- as.factor(trimNJ(Data$und_ketoacidose))
@@ -571,12 +571,22 @@ Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
 Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
 Data$col <- as.factor(trimNJ(Data$und_syk_col))
 Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
-Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
 Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-arsData <- Data %>%
-    dplyr::filter(regValg == 2)
-komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
+##Kombinere LDL
+Data$labLipLDL1 <- as.factor(trimNJ(Data$lab_lip_LDL))
+Data$labLipLDL2 <- as.factor(trimNJ(Data$lab_lip_LDL_2))
+Data$labLipLDL <- ifelse(with(Data, labLipLDL1 == 0 & labLipLDL2 == 0), 0, 1)
+
+
+
+valg1 <-  c("hba1c", "insulinsjokk", "ketoacidose","Oye", "infiltrater", "hypo", "col", "innAkt", "labLipLDL", "labResProve")
+komplett <- Data[regValg == 2, valg1, with = FALSE]
+
+
+## arsData <- Data %>%
+##   dplyr::filter(regValg == 2)
+## komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
 
 N <- dim(komplett)[1]
 
