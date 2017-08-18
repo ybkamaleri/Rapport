@@ -6,9 +6,22 @@ output:
 ---
 ```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
-RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
+
 
 ##=======KONTROLL==============##
+
+
+Sykehus <- 1
+
+## Det skal være samme år, bergningen hånterer ikke to forskjellig år
+## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
+DatoFra <- "2017-01-01" # YYYY-MM-DD
+DatoTil <- "2017-12-31" # YYYY-MM-DD
+
+##=============================##
+
+
+
 
 inspak <- function(pkg){
   nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -21,28 +34,24 @@ pakke <- c("data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr")
 inspak(pakke)
 
 ## Upload libraries
+library(data.table)
 library(dplyr)
 library(ggplot2)
 library(knitr)
 library(grid)
 library(tidyr)
-library(data.table)
-
-## setwd("~/OUS/BDR-test/data")
-## filnavn <- "avid.RDS"
-## RegData <- read.csv(filnavn, sep = ";", stringsAsFactors = FALSE, fileEncoding = "latin1")
-## RegData <- fread("File.csv")
 
 
+############
+## DATA
+############
+filDir <- getwd()
+sr01 <- paste0(filDir,"/", "datakilder1.R")
+sr02 <- paste0(filDir, "/", "datakilder2.R")
+##ifelse(file.exists(sr01), source(sr01), source(sr02))
+data <- ifelse(file.exists(sr01), sr01, sr02)
+source(data)
 
-## RegData <- as.data.table(RegData)
-
-Sykehus <- 1
-
-## Det skal være samme år, bergningen hånterer ikke to forskjellig år
-## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
-DatoFra <- "2017-01-01" # YYYY-MM-DD
-DatoTil <- "2017-12-31" # YYYY-MM-DD
 
 ############################
 ### Sjekk/installere pakker
