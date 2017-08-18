@@ -11,7 +11,7 @@ rm(list = ls())
 ##=======KONTROLL==============##
 
 
-Sykehus <- 1
+Sykehus <- 7
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
@@ -301,23 +301,35 @@ sykYear101 <- sykYearLyr %>%
 sykYearLongLyr <- as.data.frame(tidyr::spread(sykYear101, key=AlderKat3, value = count))
 sykYearLongLyr1 <- dplyr::filter(sykYearLongLyr, Year == lastyr)
 
-tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
-tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
-tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
-tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
-col <- grep("inn_Type", names(tbl02)) #finne index
-tbl03 <- tbl02[,c(col,(1:ncol(tbl02))[-col])]
+notbl <- dim(sykYearLongLyr1)[1]
 
-## Kobinere
-tblFinal <- rbind(tbl03,tbl01[,names(tbl03)])
-tblFinal <- mutate(tblFinal, dumm = ifelse(grepl("Estimert", inn_Type), 2, 1))
-tblFinal <- tblFinal[order(tblFinal$dumm),]
-tblFinal <- mutate(tblFinal, Totalt = Totalt2)
-kill <- c("Totalt2", "dumm")
-tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
-tblFinal <- as.data.frame(tblFinal)
-tblFinal[is.na(tblFinal)] <- 0
-names(tblFinal)[1] <- " "
+if (notbl != 0) {
+
+  tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
+  tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
+  tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
+  tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
+  col <- grep("inn_Type", names(tbl02)) #finne index
+  tbl03 <- tbl02[,c(col,(1:ncol(tbl02))[-col])]
+
+  ## Kobinere
+  tblFinal <- rbind(tbl03,tbl01[,names(tbl03)])
+  tblFinal <- mutate(tblFinal, dumm = ifelse(grepl("Estimert", inn_Type), 2, 1))
+  tblFinal <- tblFinal[order(tblFinal$dumm),]
+  tblFinal <- mutate(tblFinal, Totalt = Totalt2)
+  kill <- c("Totalt2", "dumm")
+  tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
+  tblFinal <- as.data.frame(tblFinal)
+  tblFinal[is.na(tblFinal)] <- 0
+  names(tblFinal)[1] <- " "
+}
+
+if(notbl == 0) {
+  tblFinal <- mutate(tbl01, Totalt = Totalt2)
+  tblFinal <- tblFinal[-2]
+  tblFinal[is.na(tblFinal)] <- 0
+  names(tblFinal)[1] <- " "
+}
 
 ## print(xtable(tblFinal, digits=0),include.rownames=F)
 knitr::kable(tblFinal, digits = 0)
@@ -606,28 +618,29 @@ maxkomp <- dim(komp1)[1]
 komp2 <- komp1[seq(0,maxkomp,2),]
 komp2 <- data.frame(komp2, row.names=navn)
 komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
+komp2$row <- 1
 ## komp2$navn <- rownames(komp2) #create col with navn
 
 ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) +
-    geom_bar(stat="identity", fill = colb) +
-    coord_flip() +
-    labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
-    geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
-    scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
-    scale_x_discrete(limits=navn) +
-    theme(
-        axis.text.y = element_text(size = 9, color = "black"),
-        plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-        plot.title = element_text(size = 10),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.y = element_blank(),
-        #panel.grid.major.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_line(size = 0.5),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+  geom_bar(stat="identity", fill = colb) +
+  coord_flip() +
+  labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
+  geom_text(aes(y = row + 1, label = paste0(Andel, "%")), hjust= -0.1, color="black", size = 3) +
+  scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
+  scale_x_discrete(limits=navn) +
+  theme(
+    axis.text.y = element_text(size = 9, color = "black"),
+    plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+    plot.title = element_text(size = 10),
+    panel.background = element_blank(),
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    #panel.grid.major.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_line(size = 0.5),
+      axis.title.y = element_text(size = 9),
+      axis.title.x = element_text(size = 9))
 
 ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
 ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
