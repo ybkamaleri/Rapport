@@ -11,7 +11,7 @@ rm(list = ls())
 ##=======KONTROLL==============##
 
 
-Sykehus <- 7
+Sykehus <- 1
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
@@ -219,7 +219,7 @@ RegDataAndre <- RegData[sykValg == 2, ]
 ## dataValg <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
-Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(as.IDate(DatoFra)), paste0(as.IDate(DatoTil))), ]
 
 ## rappData <- nbReg::nbText(data = RegDataLokal)
 ## Data <- rappData$data
