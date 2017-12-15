@@ -3,6 +3,7 @@ output:
   pdf_document: default
   html_document: default
 ---
+
 ```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
 
@@ -11,7 +12,7 @@ rm(list = ls())
 
 ## Valg sykhus fra 1 - 7. Det kommer feil melding om valgt sykehus ikke har data
 
-Sykehus <- 5
+Sykehus <- 1
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
@@ -184,7 +185,7 @@ omkode("lesund", "Sykehus", "SykehusKode", 6L) # Ålesund
 omkode("Levanger", "Sykehus", "SykehusKode", 7L) # Levanger
 
 ## lab_HbA1cAkerVerdi = hba
-RegData[, hba := lab_HbA1cAkerVerdi]
+RegData[, hba := as.numeric(lab_HbA1cAkerVerdi)]
 
 ## År
 ## RegData$Year <- as.numeric(format(as.POSIXct(RegData$inn_Dato, format = "%Y-%m-%d %H:%M"), "%Y"))
