@@ -1,8 +1,7 @@
 ---
 output:
-  html_document: default
   pdf_document: default
-  word_document: default
+
 ---
 ```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
@@ -113,8 +112,7 @@ sumCIrapp <- function(data, maalvar, gpvars, conf.Int=.95) {
   return(invisible(summ.na.zero)) }
 
 ## Alder kategori
-alder.kat2 <- function(x, lower, upper, by,
-                       sep = "-") {
+alder.kat2 <- function(x, lower, upper, by, sep = "-") {
   labs <- paste0(c(paste(seq(lower, upper - by, by = by),
                          seq(lower + by - 1, upper - 1, by = by),
                          sep = sep),
@@ -148,7 +146,11 @@ varBDR <- c(
 sykNavn <- c(
   "Ullevål universitetssykehus",
   "Haugesund sjukehus",
-  "Sykehuset i Vestfold, Tønsberg"
+  "Sykehuset i Vestfold, Tønsberg", 
+  "Nordlandssykehuset HF avd Bodø, somatikk", 
+  "St. Olavs Hospital", 
+  "Sykehus Levanger",
+  "Ålesund sjukehus"
 )
 
 
@@ -158,7 +160,13 @@ RegData <- setDT(RegData)
 ## Whitespace
 for (j in names(RegData)) set(RegData, j = j, value = RegData[[trimws(j)]])
 
-## Omkoding
+
+## Omkoding string til numerisk
+################################
+## ord : string i variablen
+## var : Variabelnavn i datasettet
+## new : Gir nytt variabelnavn
+## tall : Kode til det nye variabelnavn
 omkode <- function(ord, var, new, tall) {
   RegData[grepl(ord, get(var)), paste0(new) := tall]
 }
