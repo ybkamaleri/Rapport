@@ -1,0 +1,19 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:nil
+#+OPTIONS: broken-links:nil c:nil creator:nil d:(not "LOGBOOK") date:t e:t email:nil
+#+OPTIONS: f:t inline:t num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:nil todo:t |:t
+#+TITLE: Track {{{BREAK}}} BDR kvartalsrapport
+#+DATE: <2017-08-08 ti.>
+#+AUTHOR: Yusman Kamaleri
+#+EMAIL: ybkamaleri@gmail.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.1 (Org mode 9.0.9)
+#+MACRO: BREAK @@latex:\\@@ @@html:<br>@@
+
+* Problem [1/4]
+- [ ] Data uten fjordåret data gir feil - estimert motatte årskontroller
+- [X] Data.table dato
+- [ ] Subset med data.table
+- [ ] Count percent and number with data.table

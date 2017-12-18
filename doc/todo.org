@@ -1,0 +1,15 @@
+#+Title: BDR
+#+Date:
+* Figur 1
+** Liste [1/3]
+- [X] inn_Type har nå 4 kategorier
+- [ ] Andel uten fjoråret må bort
+- [ ] Kontrollere Year finnes minst 2 år
+
+* Figur - Avdelingns
+** Liste [/]
+- [ ] Stave feil - Avdelingens HbA1c
+
+* Figur Kompletthet
+** Liste [/]
+- [ ] LDL skal kombineres med lab_lip_LDL_2 og lab_lip_LDL. Minst 1 er ikke NA er lik

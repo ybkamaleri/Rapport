@@ -8,6 +8,15 @@
 \#*\#
 .\#*
 *.rej
+<<<<<<< HEAD
 *.jpg
 testkode.R
 testKode.R
+=======
+/try/testKode.R
+/try
+/test
+*.docx
+/doc/track.tex
+*.Rmd#
+>>>>>>> dev

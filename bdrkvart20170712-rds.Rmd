@@ -1,7 +1,27 @@
-```{r file, echo=FALSE, warning=FALSE, message=FALSE}
+---
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+```{r file, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE}
 rm(list = ls())
 
+
 ##=======KONTROLL==============##
+
+
+Sykehus <- 2
+
+## Det skal være samme år, bergningen hånterer ikke to forskjellig år
+## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
+DatoFra <- "2017-01-01" # YYYY-MM-DD
+DatoTil <- "2017-12-31" # YYYY-MM-DD
+
+##=============================##
+
+
+
 
 inspak <- function(pkg){
   nypkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
@@ -10,42 +30,27 @@ inspak <- function(pkg){
 
 }
 
-pakke <- c("nbReg", "data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr", "xtable")
+pakke <- c("data.table", "dplyr", "ggplot2", "tidyr", "grid", "knitr")
 inspak(pakke)
 
 ## Upload libraries
-library(nbReg)
+library(data.table)
 library(dplyr)
 library(ggplot2)
 library(knitr)
 library(grid)
 library(tidyr)
-library(xtable)
-library(data.table)
-
-## setwd("~/OUS/BDR-test/data")
-## filnavn <- "avid.RDS"
-## RegData <- read.csv(filnavn, sep = ";", stringsAsFactors = FALSE, fileEncoding = "latin1")
-## RegData <- fread("File.csv")
-
-RegData <- readRDS("~/Dropbox/OUS/avid/avidata2017juli.Rds")
-
-## RegData <- as.data.table(RegData)
 
 
-
-Sykehus <- 1
-
-DatoFra <- "2016-01-01" # YYYY-MM-DD
-DatoTil <- "2017-12-31" # YYYY-MM-DD
-
-##============================##
-
-MinAlder <- 0
-MaxAlder <- 99
-DBType <- 2  # 1:Type1 2:Alle
-Kjonn <- 3  		# 1:gutt 2:jente 3:alle
-DataValg <- 4 		# 1:F?rstegangsreg 2:?rskontroll 3:Poliklinisk 4:Alle
+############
+## DATA
+############
+filDir <- getwd()
+sr01 <- paste0(filDir,"/", "datakilder1.R")
+sr02 <- paste0(filDir, "/", "datakilder2.R")
+##ifelse(file.exists(sr01), source(sr01), source(sr02))
+data <- ifelse(file.exists(sr01), sr01, sr02)
+source(data)
 
 
 ############################
@@ -120,7 +125,7 @@ alder.kat2 <- function(x, lower, upper, by,
 
 tblFun <- function(x){
   tbl <- table(x)
-  res <- cbind(tbl,round(prop.table(tbl)*100,1))
+  res <- cbind(tbl,round(prop.table(tbl)*100,1)) #1 digit decimal
   colnames(res) <- c('Antall','Andel')
   res
 }
@@ -129,34 +134,51 @@ tblFun <- function(x){
 ## Rensing og omkoding
 ########################
 
-## white space
-trim <- function( x ) {
-  gsub("(^[[:space:]]+|[[:space:]]+$)", "", x)
+### variabler brukes
+varBDR <- c(
+  "inn_Type",
+  "Kjonn", 
+  "Sykehus",
+  "lab_HbA1cAkerVerdi",
+  "inn_Dato",
+  "inn_DiagDato"
+)
+
+## uferdig liste
+sykNavn <- c(
+  "Ullevål universitetssykehus",
+  "Haugesund sjukehus",
+  "Sykehuset i Vestfold, Tønsberg"
+)
+
+
+## Convertere data til DT format
+RegData <- setDT(RegData)
+
+## Whitespace
+for (j in names(RegData)) set(RegData, j = j, value = RegData[[trimws(j)]])
+
+## Omkoding
+omkode <- function(ord, var, new, tall) {
+  RegData[grepl(ord, get(var)), paste0(new) := tall]
 }
 
 ## Inn_Type = regValg
-RegData$ValgtData2 <- trim(RegData$inn_Type)
-## RegData$ValgtData <- gsub(" $", "", RegData$inn_Type, perl = T)
-RegData$regValg[RegData$ValgtData2=="Førstegangsregistrering"] <- 1
-RegData$regValg[RegData$ValgtData2=="Årskontroll"] <- 2
-RegData$regValg[RegData$ValgtData2=="Poliklinisk kontroll"] <- 3
-RegData$regValg[RegData$ValgtData2 == "Overflytting"] <- 4
-RegData$regValg <- as.factor(RegData$regValg)
+omkode("rstegangsreg", "inn_Type", "regValg", 1L) # Førstegangsregistrering
+omkode("rskontroll", "inn_Type", "regValg", 2L)   # Årskontroll
+RegData[!(regValg %in% 1:2), regValg := .(9L)]    # Alt annet
 
 ## SykehusNavn , SykehusKode
-RegData$SykehusNavn <- trim(RegData$Sykehus)
-RegData$SykehusKode <- NA
-RegData$SykehusKode[RegData$SykehusNavn=="Ullevål universitetssykehus"] <- 1
-RegData$SykehusKode[RegData$SykehusNavn=="Haugesund sjukehus"] <- 2
-RegData$SykehusKode[RegData$SykehusNavn=="Sykehuset i Vestfold, Tønsberg"] <- 3
-RegData$SykehusKode[RegData$SykehusNavn=="Nordlandssykehuset HF avd Bodø, somatikk"] <- 4
-RegData$SykehusKode[RegData$SykehusNavn=="St. Olavs Hospital"] <- 5
-RegData$SykehusKode[RegData$SykehusNavn=="Ålesund sjukehus"] <- 6
-RegData$SykehusKode[RegData$SykehusNavn=="Sykehuset Levanger"] <- 7
-RegData$SykehusKode <- factor(RegData$SykehusKode)
+omkode("Ullev", "Sykehus", "SykehusKode", 1L) # Ullevål
+omkode("Haugesund", "Sykehus", "SykehusKode", 2L) # Haugesund
+omkode("Vestfold", "Sykehus", "SykehusKode", 3L) # S.Vestfold, Tønsberg
+omkode("Nordlandssyk", "Sykehus", "SykehusKode", 4L) # Nordlandssykehuset
+omkode("Olavs", "Sykehus", "SykehusKode", 5L) # St. Olavs
+omkode("lesund", "Sykehus", "SykehusKode", 6L) # Ålesund
+omkode("Levanger", "Sykehus", "SykehusKode", 7L) # Levanger
 
 ## lab_HbA1cAkerVerdi = hba
-RegData$hba <- as.numeric(trim(RegData$lab_HbA1cAkerVerdi))
+RegData[, hba := as.numeric(lab_HbA1cAkerVerdi)]
 
 ## År
 ## RegData$Year <- as.numeric(format(as.POSIXct(RegData$inn_Dato, format = "%Y-%m-%d %H:%M"), "%Y"))
@@ -165,24 +187,22 @@ RegData$innYear <- as.Date(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d
 RegData$diagYear <- as.Date(format(as.POSIXct(RegData$inn_DiagDato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))
 
 ## Diabetes varighet
-RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365)
+RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365.25)
 RegData$diaVarighet <- as.numeric(RegData$diaVarighet)
 
 ## Kjønn = kjonn
-RegData$kjonn1 <- as.factor(trim(RegData$Kjonn))
-RegData$kjonn <- NA
-RegData$kjonn[RegData$kjonn1=="Gutt"] <- 1
-RegData$kjonn[RegData$kjonn1=="Jente"] <- 2
-RegData$kjonn <- factor(RegData$kjonn)
+omkode("Gutt", "Kjonn", "kjonn", 1L)
+omkode("Jente", "Kjonn", "kjonn", 2L)
 
-## Diabetes Type 1
-RegData$diabetes_Type1<- trim(RegData$diabetes_Type1)
-RegData$diaType1 <- ifelse(RegData$diabetes_Type1 == "Ja", 1, 2) #1:Type1 2:AndreType
+## Diabetes 1:Type 1 og 2:AndreType
+## system.time(RegData$diaType1 <- ifelse(RegData$diabetes_Type1 == "Ja", 1, 2)) #1:Type1 2:AndreType
+RegData[grepl("Ja", diabetes_Type1), diaType1 := list(1L)][is.na(diaType1), diaType1 := .(2)]
 
-## Alder
+############
+############ Skal det være mot dagens dato eller inn_Dato??
+## Alder 
 RegData$FDato1 <- as.POSIXct(RegData$FDato, origin = "1899-12-30 0:00:00")
-RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365))
-
+RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365.25))
 
 ## Kategorisert Alder til max 15+
 RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
@@ -190,33 +210,47 @@ RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
 ##lokal og andre
 RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
 
-RegDataLokal <- dplyr::filter(RegData, sykValg == 1) #lokal sykehus
-RegDataAndre <- dplyr::filter(RegData, sykValg == 2) #øvrige sykehusene
+## Del datasettet - CHECK! Unnødvending
+## Finne løsning for fjoråret data til prosent telling
+RegDataLokal <- RegData[sykValg == 1, ]
+RegDataAndre <- RegData[sykValg == 2, ]
+
+## Utvalgt data fra dato - ubrukte datasettet
+## dataValg <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
-rappData <- nbReg::nbText(data = RegDataLokal)
-Data <- rappData$data
+Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(as.IDate(DatoFra)), paste0(as.IDate(DatoTil))), ]
+
+## rappData <- nbReg::nbText(data = RegDataLokal)
+## Data <- rappData$data
 
 ########### utvalgt norge data innen spesifiserte tidsrommet
-norData <- nbReg::nbText(data = RegData)
-dataNorge <- norData$data
+dataNorge <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+## norData <- nbReg::nbText(data = RegData)
+## dataNorge <- norData$data
 
 #############################
-sykNavn <- Data$SykehusNavn[Data$SykehusKode == Sykehus][1]
-tidRom <- rappData$figTxt[[4]]
+sykNavn <- Data$Sykehus[Data$SykehusKode == Sykehus][1]
+## tidRom <- rappData$figTxt[[4]]
+DatoFra1 <- format(as.POSIXct(DatoFra, format = "%Y-%m-%d"), "%d.%m.%Y")
+DatoTil1 <- format(as.POSIXct(DatoTil, format = "%Y-%m-%d"), "%d.%m.%Y")
+tidRom <- paste(DatoFra1, DatoTil1, sep = " - ")
 
 year <- as.integer(format(as.Date(DatoTil), "%Y"))
 lastyr <- as.numeric(year - 1)
-
+minDate <-  format(min(Data$innYear), "%d.%m.%Y")
+maxDate <-  format(max(Data$innYear), "%d.%m.%Y")
+harData <- paste(minDate, maxDate, sep = " - ")
 ```
 
 ---
 title: Rapport for `r sykNavn`
 date: `r format(Sys.Date(), "%d %b. %Y")`
 ---
-
-`r tidRom`
-
+******************************
+Valg periode: `r tidRom` 
+\hfill\break
+Tilgjengelig data: `r harData`
 
 ## Antall førstegangsregistreringer og årskontroll
 
@@ -225,10 +259,11 @@ Estimert andel årskontroller (%) er basert på totalt antall innleverte
 årskontroller i `r lastyr`
 
 ```{r fig1, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
-## Lokal sykehus data eksludert poliklinisk
+
+## Lokal sykehus data eksludert annen enn årskontroll og førstegangsregistrering
 sykYear <- Data %>%
-  select(Year, inn_Type, AlderKat3) %>%
-  filter(Year >= lastyr, !grepl("Poliklinisk", inn_Type)) %>%
+  select(Year, inn_Type, regValg, AlderKat3) %>%
+  filter(Year >= lastyr, regValg != 9) %>%
   group_by(inn_Type, Year, AlderKat3) %>%
   summarise(
     count = n())
@@ -237,7 +272,7 @@ sykYear <- Data %>%
 sykYear01 <- sykYear %>%
   group_by(inn_Type, Year) %>%
   mutate(Totalt2 = sum(count),
-         dumm = ifelse(grepl("Årskontroll", inn_Type), 2, 1))
+         dumm = ifelse(grepl("rskontroll", inn_Type), 2, 1))
 
 sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
 tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
@@ -250,10 +285,10 @@ tbl01 <- tbl01[,!(names(tbl01) %in% buang)]
 
 ## Estimerte andel motatte årskontroller tabell
 
-## for alderkat året og fjoråret - bruk hele datasettet
-sykYearLyr <- RegData %>%
+## for alderkat året og fjoråret - bruk bare lokal
+sykYearLyr <- RegDataLokal %>%
   select(Year, inn_Type, AlderKat3) %>%
-  filter(Year %in% lastyr:year, grepl(c("Årskontroll"), inn_Type)) %>%
+  filter(Year %in% lastyr:year, grepl(c("rskontroll"), inn_Type)) %>%
   group_by(inn_Type, Year, AlderKat3) %>%
   summarise(
     count = n())
@@ -266,22 +301,35 @@ sykYear101 <- sykYearLyr %>%
 sykYearLongLyr <- as.data.frame(tidyr::spread(sykYear101, key=AlderKat3, value = count))
 sykYearLongLyr1 <- dplyr::filter(sykYearLongLyr, Year == lastyr)
 
-tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
-tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
-tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
-tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
-col <- grep("inn_Type", names(tbl02)) #finne index
-tbl03 <- tbl02[,c(col,(1:ncol(tbl02))[-col])]
+notbl <- dim(sykYearLongLyr1)[1]
 
-## Kobinere
-tblFinal <- rbind(tbl03,tbl01[,names(tbl03)])
-tblFinal <- mutate(tblFinal, dumm = ifelse(grepl("Estimert", inn_Type), 2, 1))
-tblFinal <- tblFinal[order(tblFinal$dumm),]
-tblFinal <- mutate(tblFinal, Totalt = Totalt2)
-kill <- c("Totalt2", "dumm")
-tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
-tblFinal <- as.data.frame(tblFinal)
-tblFinal[is.na(tblFinal)] <- 0
+if (notbl != 0) {
+
+  tbl02 <- dplyr::full_join(tblYearAndel, sykYearLongLyr1)
+  tbl02 <- round(100*tbl02[tbl02$Year==year, (-1)]/tbl02[tbl02$Year==lastyr, c(-1)])
+  tbl02 <- tbl02[,!(names(tbl02) %in% buang)]
+  tbl02 <- mutate(tbl02, inn_Type = "Estimert andel motatte årskontroller (%)")
+  col <- grep("inn_Type", names(tbl02)) #finne index
+  tbl03 <- tbl02[,c(col,(1:ncol(tbl02))[-col])]
+
+  ## Kobinere
+  tblFinal <- rbind(tbl03,tbl01[,names(tbl03)])
+  tblFinal <- mutate(tblFinal, dumm = ifelse(grepl("Estimert", inn_Type), 2, 1))
+  tblFinal <- tblFinal[order(tblFinal$dumm),]
+  tblFinal <- mutate(tblFinal, Totalt = Totalt2)
+  kill <- c("Totalt2", "dumm")
+  tblFinal <- tblFinal[,!names(tblFinal) %in% kill]
+  tblFinal <- as.data.frame(tblFinal)
+  tblFinal[is.na(tblFinal)] <- 0
+  names(tblFinal)[1] <- " "
+}
+
+if(notbl == 0) {
+  tblFinal <- mutate(tbl01, Totalt = Totalt2)
+  tblFinal <- tblFinal[-2]
+  tblFinal[is.na(tblFinal)] <- 0
+  names(tblFinal)[1] <- " "
+}
 
 ## print(xtable(tblFinal, digits=0),include.rownames=F)
 knitr::kable(tblFinal, digits = 0)
@@ -358,7 +406,7 @@ grid.draw(gg.fig4T)
 ```
 \pagebreak
 
-## Andelingen HbA1c mot landsgjennomsnittet
+## Avdelingens HbA1c mot landsgjennomsnittet
 
 ```{r plot1, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7, fig.align= 'center'}
 ## Bruk nbReg pakke
@@ -535,6 +583,7 @@ trimNJ <- function(x) {
     return(x)
 }
 
+setDT(Data)
 Data$hba1c <- as.factor(trimNJ(Data$lab_HbA1cAkerVerdi))
 Data$insulinsjokk <- as.factor(trimNJ(Data$und_inssjokk))
 Data$ketoacidose <- as.factor(trimNJ(Data$und_ketoacidose))
@@ -543,12 +592,22 @@ Data$infiltrater <- as.factor(trimNJ(Data$und_infiltrater))
 Data$hypo <- as.factor(trimNJ(Data$und_syk_hypo))
 Data$col <- as.factor(trimNJ(Data$und_syk_col))
 Data$innAkt <- as.factor(trimNJ(Data$Inn_Akt))
-Data$labLipLDL <- as.factor(trimNJ(Data$lab_lip_LDL))
 Data$labResProve <- as.factor(trimNJ(Data$lab_res_1prove))
 
-arsData <- Data %>%
-    dplyr::filter(regValg == 2)
-komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
+##Kombinere LDL
+Data$labLipLDL1 <- as.factor(trimNJ(Data$lab_lip_LDL))
+Data$labLipLDL2 <- as.factor(trimNJ(Data$lab_lip_LDL_2))
+Data$labLipLDL <- ifelse(with(Data, labLipLDL1 == 0 & labLipLDL2 == 0), 0, 1)
+
+
+
+valg1 <-  c("hba1c", "insulinsjokk", "ketoacidose","Oye", "infiltrater", "hypo", "col", "innAkt", "labLipLDL", "labResProve")
+komplett <- Data[regValg == 2, valg1, with = FALSE]
+
+
+## arsData <- Data %>%
+##   dplyr::filter(regValg == 2)
+## komplett <- dplyr::select(arsData, c(hba1c, insulinsjokk, ketoacidose, Oye, infiltrater, hypo, col, innAkt, labLipLDL, labResProve))
 
 N <- dim(komplett)[1]
 
@@ -559,28 +618,29 @@ maxkomp <- dim(komp1)[1]
 komp2 <- komp1[seq(0,maxkomp,2),]
 komp2 <- data.frame(komp2, row.names=navn)
 komp2 <- tibble::rownames_to_column(komp2, "navn") #convert row.names to first column
+komp2$row <- 1
 ## komp2$navn <- rownames(komp2) #create col with navn
 
 ggkomplett <- ggplot(komp2, aes(x=navn,y = Andel)) +
-    geom_bar(stat="identity", fill = colb) +
-    coord_flip() +
-    labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
-    geom_text(aes(y = Andel + 0.05, label = Andel), hjust= -0.1, color="black", size = 3) +
-    scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
-    scale_x_discrete(limits=navn) +
-    theme(
-        axis.text.y = element_text(size = 9, color = "black"),
-        plot.margin = unit(c(0,2,0.5,0.5), "cm"),
-        plot.title = element_text(size = 10),
-        panel.background = element_blank(),
-        panel.border = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.y = element_blank(),
-        #panel.grid.major.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_line(size = 0.5),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+  geom_bar(stat="identity", fill = colb) +
+  coord_flip() +
+  labs(title = paste0("N = ", N, " pasienter"), y = "Andel (%)", x = "") +
+  geom_text(aes(y = row + 1, label = paste0(Andel, "%")), hjust= -0.1, color="black", size = 3) +
+  scale_y_continuous(limits = c(0,100), expand = c(0,0)) +
+  scale_x_discrete(limits=navn) +
+  theme(
+    axis.text.y = element_text(size = 9, color = "black"),
+    plot.margin = unit(c(0,2,0.5,0.5), "cm"),
+    plot.title = element_text(size = 10),
+    panel.background = element_blank(),
+    panel.border = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    #panel.grid.major.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_line(size = 0.5),
+      axis.title.y = element_text(size = 9),
+      axis.title.x = element_text(size = 9))
 
 ggkomplett2 <- ggplot_gtable(ggplot_build(ggkomplett))
 ggkomplett2$layout$clip[ggkomplett2$layout$name == "panel"] <- "off"
