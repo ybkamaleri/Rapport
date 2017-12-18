@@ -10,12 +10,12 @@ rm(list = ls())
 ##=======KONTROLL==============##
 
 
-Sykehus <- 2
+SYKEHUS = 2
 
 ## Det skal være samme år, bergningen hånterer ikke to forskjellig år
 ## f.eks DatoFra 2016-11-01 og DatoTil 2017-02-28
-DatoFra <- "2017-01-01" # YYYY-MM-DD
-DatoTil <- "2017-12-31" # YYYY-MM-DD
+DatoFra = "2017-01-01" # YYYY-MM-DD
+DatoTil = "2017-12-31" # YYYY-MM-DD
 
 ##=============================##
 
@@ -186,17 +186,17 @@ omkode("lesund", "Sykehus", "SykehusKode", 6L) # Ålesund
 omkode("Levanger", "Sykehus", "SykehusKode", 7L) # Levanger
 
 ## lab_HbA1cAkerVerdi = hba
-RegData[, hba := as.numeric(lab_HbA1cAkerVerdi)]
+## koma byttet til punktum hvis filen kommer fra Excel fil
+RegData[, hba := as.numeric(as.character(sub(",", ".", lab_HbA1cAkerVerdi)))]
 
 ## År
-## RegData$Year <- as.numeric(format(as.POSIXct(RegData$inn_Dato, format = "%Y-%m-%d %H:%M"), "%Y"))
-RegData$Year <- as.numeric(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d %H:%M"), "%Y"))
-RegData$innYear <- as.Date(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))
-RegData$diagYear <- as.Date(format(as.POSIXct(RegData$inn_DiagDato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))
+RegData[ , Year := as.numeric(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d %H:%M"), "%Y"))
+        ][ , innYear :=  as.Date(format(as.POSIXct(RegData$inn_Dato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))
+          ][ , diagYear := as.Date(format(as.POSIXct(RegData$inn_DiagDato, format ="%Y-%m-%d %H:%M"), "%Y-%m-%d"))]
+
 
 ## Diabetes varighet
-RegData$diaVarighet <- floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365.25)
-RegData$diaVarighet <- as.numeric(RegData$diaVarighet)
+RegData[, diaVarighet := as.numeric(floor(difftime(RegData$innYear, RegData$diagYear, units = "days")/365.25))]
 
 ## Kjønn = kjonn
 omkode("Gutt", "Kjonn", "kjonn", 1L)
@@ -213,10 +213,12 @@ RegData$FDato1 <- as.POSIXct(RegData$FDato, origin = "1899-12-30 0:00:00")
 RegData$Alder <- as.integer(floor(difftime(Sys.time(), as.POSIXct(RegData$FDato1, format = "%Y-%m-%d %H:%M"), units = "days")/365.25))
 
 ## Kategorisert Alder til max 15+
-RegData$AlderKat3 <- alder.kat2(RegData$Alder, 0, 15, 5)
+RegData[, AlderKat3 := alder.kat2(Alder, 0, 15, 5)]
+
 
 ##lokal og andre
-RegData$sykValg <- ifelse(RegData$SykehusKode == Sykehus, 1, 2)
+RegData[, sykValg := ifelse(SykehusKode == SYKEHUS, 1, 2)]
+
 
 ## Del datasettet - CHECK! Unnødvending
 ## Finne løsning for fjoråret data til prosent telling
@@ -227,15 +229,16 @@ RegDataAndre <- RegData[sykValg == 2, ]
 ## dataValg <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 
 ########### utvalgt lokal data innen spesifiserte tidsrommet ie. kvartalet
-Data <- RegDataLokal[as.IDate(innYear) %between% c(paste0(as.IDate(DatoFra)), paste0(as.IDate(DatoTil))), ]
+Data <- RegDataLokal[as.POSIXct(innYear) %between% c(paste0(as.POSIXct(DatoFra)), paste0(as.POSIXct(DatoTil))), ]
 
 ## rappData <- nbReg::nbText(data = RegDataLokal)
 ## Data <- rappData$data
 
 ########### utvalgt norge data innen spesifiserte tidsrommet
-dataNorge <- RegData[as.IDate(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
+dataNorge <- RegData[as.POSIXct(innYear) %between% c(paste0(DatoFra), paste0(DatoTil)), ]
 ## norData <- nbReg::nbText(data = RegData)
 ## dataNorge <- norData$data
+
 
 #############################
 sykNavn <- Data$Sykehus[Data$SykehusKode == Sykehus][1]
@@ -269,18 +272,28 @@ Estimert andel årskontroller (%) er basert på totalt antall innleverte
 ```{r fig1, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
 
 ## Lokal sykehus data eksludert annen enn årskontroll og førstegangsregistrering
-sykYear <- Data %>%
-  select(Year, inn_Type, regValg, AlderKat3) %>%
-  filter(Year >= lastyr, regValg != 9) %>%
-  group_by(inn_Type, Year, AlderKat3) %>%
-  summarise(
-    count = n())
+
+## sykYear <- Data %>%
+##   select(Year, inn_Type, regValg, AlderKat3) %>%
+##   filter(Year >= lastyr, regValg != 9) %>%
+##   group_by(inn_Type, Year, AlderKat3) %>%
+##   summarise(
+##     count = n())
+
+sykYear1 <- Data[Year == year & regValg != 9, .N, by = list(inn_Type, AlderKat3)]
+sykYear2 <- Data[Year == year & regValg != 9, .N, by = list(regValg, AlderKat3)]
+
+sykYearLong1 <- dcast(sykYear2, regValg ~ AlderKat3, value.var = "N")
 
 ## Total for Årskontroll og Førstegang
-sykYear01 <- sykYear %>%
-  group_by(inn_Type, Year) %>%
-  mutate(Totalt2 = sum(count),
-         dumm = ifelse(grepl("rskontroll", inn_Type), 2, 1))
+## sykYear01 <- sykYear %>%
+##   group_by(inn_Type, Year) %>%
+##   mutate(Totalt2 = sum(count),
+##          dumm = ifelse(grepl("rskontroll", inn_Type), 2, 1))
+
+sykYear1[, `:=`(Year = year, Sum = sum(N)), by = inn_Type]
+sykYear2[, `:=`(Year = year, Sum = sum(N)), by = regValg]
+
 
 sykYearLong <- as.data.frame(tidyr::spread(sykYear01, key=AlderKat3, value = count))
 tblYear <- sykYearLong[order(sykYearLong$dumm),] #reorder: Førstegang er på toppen
