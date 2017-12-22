@@ -11,3 +11,4 @@
 *.docx
 /doc/track.tex
 *.Rmd#
+*.org#
