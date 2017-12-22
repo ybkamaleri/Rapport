@@ -12,3 +12,4 @@
 /doc/track.tex
 *.Rmd#
 *.org#
+/datakilder1.R
